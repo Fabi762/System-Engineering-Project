@@ -3,7 +3,6 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 const cors = require('cors')
-const { parsePdfToText, readTextContent, listContents } = require('./pdfProcessor')
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -47,7 +46,12 @@ app.post('/upload', upload.array('files', 50), (req, res) => {
 
 // einfache Root-Route, damit GET / nicht mit "Cannot GET /" antwortet
 app.get('/', (req, res) => {
-  res.send('Backend API läuft. Verwende POST /upload zum Hochladen von PDF-Dateien.');
+  res.send('Backend API läuft. Verwende POST /upload zum Hochladen von PDF-Dateien.')
+})
+
+// Health-Route zur schnellen Prüfung ob Server reachable ist
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() })
 })
 
 // ====== PDF-Parser Routen ======
@@ -103,6 +107,55 @@ app.get('/contents', (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Backend listening on http://localhost:${PORT}`)
+// verbessertes Starten: auf 0.0.0.0 binden (wichtig in Containern/Codespaces)
+// und: versuche mehrere Ports, falls der Standardport belegt ist
+const HOST = process.env.HOST || '0.0.0.0'
+const DEFAULT_PORT = parseInt(process.env.PORT || '4000', 10)
+const MAX_TRIES = 10
+
+let attempts = 0
+
+function tryListen(port) {
+  attempts += 1
+  const server = app.listen(port, HOST, () => {
+    console.log(`Backend listening on http://${HOST}:${port}`)
+  })
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.warn(`Port ${port} bereits in Benutzung.`)
+      if (attempts < MAX_TRIES) {
+        const next = port + 1
+        console.warn(`Versuche Port ${next} ...`)
+        setTimeout(() => tryListen(next), 300)
+      } else {
+        console.error(`Kein freier Port gefunden (nach ${MAX_TRIES} Versuchen). Beende.`)
+        process.exit(1)
+      }
+    } else {
+      console.error('Serverfehler beim Starten:', err)
+      process.exit(1)
+    }
+  })
+
+  // optional: sauberes Herunterfahren bei Signalen
+  const shutdown = () => {
+    server.close(() => {
+      console.log('Server heruntergefahren.')
+      process.exit(0)
+    })
+  }
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
+}
+
+// Starten ab DEFAULT_PORT
+tryListen(DEFAULT_PORT)
+
+// einfache Fehlerbehandlung und Logging, damit Abstürze sichtbar sind
+process.on('unhandledRejection', (reason, p) => {
+  console.error('Unhandled Rejection at:', p, 'reason:', reason)
+})
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err)
 })

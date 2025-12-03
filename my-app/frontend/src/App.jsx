@@ -31,18 +31,25 @@ export default function App() {
 
     try {
       setStatus('Hochladen...')
-      // changed: use relative path so Vite dev server proxy forwards to backend
       const res = await fetch('/upload', {
         method: 'POST',
         body: form
       })
-      if (!res.ok) throw new Error(`Server antwortete mit ${res.status}`)
+      if (!res.ok) {
+        setStatus(`Serverfehler beim Hochladen: ${res.status}`)
+        throw new Error(`Server antwortete mit ${res.status}`)
+      }
       const body = await res.json()
       setUploaded(body.files || [])
       setStatus('Hochladen abgeschlossen.')
     } catch (err) {
       console.error(err)
-      setStatus('Fehler beim Hochladen.')
+      if (err instanceof TypeError) {
+        // Fetch wirft TypeError bei Netzwerkproblemen
+        setStatus('Backend nicht erreichbar. Starte das Backend: cd my-app/backend && npm start')
+      } else {
+        setStatus('Fehler beim Hochladen.')
+      }
     }
   }
 
@@ -58,14 +65,21 @@ export default function App() {
           originalName: file.originalName
         })
       })
-      if (!parseRes.ok) throw new Error(`Server antwortete mit ${parseRes.status}`)
+      if (!parseRes.ok) {
+        setStatus(`Serverfehler beim Auslesen: ${parseRes.status}`)
+        throw new Error(`Server antwortete mit ${parseRes.status}`)
+      }
       const result = await parseRes.json()
       
-      setParsed([...parsed, result])
+      setParsed((p) => [...p, result])
       setStatus(`✓ "${file.originalName}" erfolgreich ausgelesen! Text gespeichert: ${result.outputFileName}`)
     } catch (err) {
       console.error(err)
-      setStatus(`Fehler beim Auslesen von "${file.originalName}".`)
+      if (err instanceof TypeError) {
+        setStatus('Backend nicht erreichbar. Starte das Backend: cd my-app/backend && npm start')
+      } else {
+        setStatus(`Fehler beim Auslesen von "${file.originalName}".`)
+      }
     }
   }
 

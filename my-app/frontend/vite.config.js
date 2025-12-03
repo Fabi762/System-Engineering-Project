@@ -9,6 +9,16 @@ export default defineConfig({
         target: 'http://localhost:4000',
         changeOrigin: true,
         secure: false
+      },
+      '/parse-pdf': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false
+      },
+      '/contents': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false
       }
     }
   }

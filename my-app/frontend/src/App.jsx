@@ -5,6 +5,7 @@ export default function App() {
   const [selectedFiles, setSelectedFiles] = useState([])
   const [status, setStatus] = useState('')
   const [uploaded, setUploaded] = useState([])
+  const [parsed, setParsed] = useState([])
 
   function onFileChange(e) {
     const chosen = Array.from(e.target.files || [])
@@ -45,6 +46,43 @@ export default function App() {
     }
   }
 
+  async function onParsePdf(file) {
+    try {
+      setStatus(`Lese aus: ${file.originalName}...`)
+      
+      const parseRes = await fetch('/parse-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.filename,
+          originalName: file.originalName
+        })
+      })
+      if (!parseRes.ok) throw new Error(`Server antwortete mit ${parseRes.status}`)
+      const result = await parseRes.json()
+      
+      setParsed([...parsed, result])
+      setStatus(`✓ "${file.originalName}" erfolgreich ausgelesen! Text gespeichert: ${result.outputFileName}`)
+    } catch (err) {
+      console.error(err)
+      setStatus(`Fehler beim Auslesen von "${file.originalName}".`)
+    }
+  }
+
+  async function onParseAllFiles() {
+    if (!uploaded.length) {
+      setStatus('Keine hochgeladenen Dateien zum Auslesen.')
+      return
+    }
+    
+    setStatus('Lese alle Dateien aus...')
+    setParsed([])
+    
+    for (const file of uploaded) {
+      await onParsePdf(file)
+    }
+  }
+
   return (
     <div style={{ padding: 20, fontFamily: 'Arial, sans-serif' }}>
       <h2>PDF Upload</h2>
@@ -69,6 +107,31 @@ export default function App() {
             {uploaded.map((f, i) => (
               <li key={i}>
                 {f.originalName} — gespeichert als: {f.filename} ({f.size} bytes)
+                <button 
+                  onClick={() => onParsePdf(f)}
+                  style={{ marginLeft: 10, padding: '5px 10px', cursor: 'pointer' }}
+                >
+                  Auslesen
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button 
+            onClick={onParseAllFiles}
+            style={{ marginTop: 10, padding: '8px 15px', fontSize: 16, cursor: 'pointer', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: 4 }}
+          >
+            Alle Dateien auslesen
+          </button>
+        </div>
+      )}
+
+      {parsed.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Ausgelesene Inhalte</h3>
+          <ul>
+            {parsed.map((p, i) => (
+              <li key={i}>
+                <strong>{p.outputFileName}</strong> — {p.pageCount} Seiten, {p.textLength} Zeichen
               </li>
             ))}
           </ul>

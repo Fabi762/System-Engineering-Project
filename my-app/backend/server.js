@@ -4,17 +4,21 @@ const path = require('path')
 const fs = require('fs')
 const cors = require('cors')
 
+// Hinzugefügte Zeile: Import der Parser-Funktionen
+const { parsePdfToText, readTextContent, listContents } = require('./pdfProcessor') 
+
 const app = express()
 const PORT = process.env.PORT || 4000
 
 // Upload-Ordner sicherstellen
 const UPLOAD_DIR = path.join(__dirname, 'uploads')
 fs.mkdirSync(UPLOAD_DIR, { recursive: true })
-
+// ... (der Rest des Express-Setups bleibt gleich)
 app.use(cors())
 app.use(express.json())
-// Statische Auslieferung, falls Frontend Links zu gespeicherten Dateien benötigt
 app.use('/uploads', express.static(UPLOAD_DIR))
+
+// ... (Multer-Setup: storage, fileFilter, upload)
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
@@ -44,19 +48,17 @@ app.post('/upload', upload.array('files', 50), (req, res) => {
   res.json({ success: true, files })
 })
 
-// einfache Root-Route, damit GET / nicht mit "Cannot GET /" antwortet
 app.get('/', (req, res) => {
   res.send('Backend API läuft. Verwende POST /upload zum Hochladen von PDF-Dateien.')
 })
 
-// Health-Route zur schnellen Prüfung ob Server reachable ist
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() })
 })
 
 // ====== PDF-Parser Routen ======
+// Diese Routen können nun auf die importierten Funktionen zugreifen.
 
-// Route zum Parsing einer bereits hochgeladenen PDF (über Dateipfad)
 app.post('/parse-pdf', async (req, res) => {
   try {
     const { filename, originalName } = req.body
@@ -77,7 +79,8 @@ app.post('/parse-pdf', async (req, res) => {
 
     const outputFileName = originalName ? path.parse(originalName).name : path.parse(filename).name
 
-    const result = await parsePdfToText(pdfFilePath, outputFileName)
+    // parsePdfToText ist jetzt definiert
+    const result = await parsePdfToText(pdfFilePath, outputFileName) 
     console.log(`[API] Parsing erfolgreich: ${result.outputFileName}`)
 
     res.json(result)
@@ -87,28 +90,28 @@ app.post('/parse-pdf', async (req, res) => {
   }
 })
 
-// Route zum Abrufen einer extrahierten Text-Datei
 app.get('/contents/:fileName', (req, res) => {
   try {
-    const content = readTextContent(req.params.fileName)
+    // readTextContent ist jetzt definiert
+    const content = readTextContent(req.params.fileName) 
     res.json({ success: true, fileName: req.params.fileName, content })
   } catch (error) {
     res.status(404).json({ success: false, error: error.message })
   }
 })
 
-// Route zum Auflisten aller extrahierten Inhalte
 app.get('/contents', (req, res) => {
   try {
-    const files = listContents()
+    // listContents ist jetzt definiert
+    const files = listContents() 
     res.json({ success: true, files })
   } catch (error) {
     res.status(500).json({ success: false, error: error.message })
   }
 })
 
-// verbessertes Starten: auf 0.0.0.0 binden (wichtig in Containern/Codespaces)
-// und: versuche mehrere Ports, falls der Standardport belegt ist
+// ... (tryListen-Funktion und Serverstart-Logik)
+
 const HOST = process.env.HOST || '0.0.0.0'
 const DEFAULT_PORT = parseInt(process.env.PORT || '4000', 10)
 const MAX_TRIES = 10
@@ -138,7 +141,6 @@ function tryListen(port) {
     }
   })
 
-  // optional: sauberes Herunterfahren bei Signalen
   const shutdown = () => {
     server.close(() => {
       console.log('Server heruntergefahren.')
@@ -149,10 +151,8 @@ function tryListen(port) {
   process.on('SIGTERM', shutdown)
 }
 
-// Starten ab DEFAULT_PORT
 tryListen(DEFAULT_PORT)
 
-// einfache Fehlerbehandlung und Logging, damit Abstürze sichtbar sind
 process.on('unhandledRejection', (reason, p) => {
   console.error('Unhandled Rejection at:', p, 'reason:', reason)
 })

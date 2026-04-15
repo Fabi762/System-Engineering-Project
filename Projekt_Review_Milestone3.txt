@@ -1,0 +1,216 @@
+================================================================================
+                    PROJEKT-REVIEW: StudyBuddy
+                    Stand: Milestone 3 (15. April 2026)
+                    Team: Leon, Mario, Fabian
+================================================================================
+
+
+1. PROJEKTSTATUS – WO STEHEN WIR?
+================================================================================
+
+Wir befinden uns aktuell am Ende von Milestone 3 (Sprint 5-6). Das Projekt
+"StudyBuddy" ist ein KI-gestuetzter Lernassistent, der aus Vorlesungsfolien
+automatisch Lernmaterialien erstellt.
+
+Gesamtfortschritt:  ca. 70% der geplanten Features sind umgesetzt.
+
+  Milestone 1 (Sprint 1-2):  ERLEDIGT  – Projektsetup & Grundarchitektur
+  Milestone 2 (Sprint 3-4):  ERLEDIGT  – Dokumenten-Upload & Parsing
+  Milestone 3 (Sprint 5-6):  ERLEDIGT  – KI-Integration (Lernzettel)
+  Milestone 4 (Sprint 7-8):  OFFEN     – Karteikarten & UI-Polish
+
+
+2. WAS WURDE ERLEDIGT?
+================================================================================
+
+MILESTONE 1 – Projektsetup (Leon, Mario, Fabian)
+-------------------------------------------------
+  [x] Git-Repository eingerichtet (Fabian)
+  [x] React 19 + Vite Frontend erstellt (Leon)
+  [x] FastAPI Backend aufgesetzt (Mario)
+  [x] Projektstruktur festgelegt (Alle)
+  [x] Vite Dev Proxy konfiguriert (API-Weiterleitung /api/* -> :8000)
+  [ ] CI/CD Pipeline – verschoben, da nicht kritisch fuer MVP
+
+MILESTONE 2 – Dokumenten-Upload & Parsing (Leon, Mario, Fabian)
+---------------------------------------------------------------
+  [x] Drag & Drop Upload mit visueller Rueckmeldung (Leon)
+  [x] Docling-Integration fuer Dokumentenanalyse (Mario)
+  [x] Markdown-Vorschau des extrahierten Inhalts (Fabian)
+  [x] Seitenleiste mit Dokumentenverwaltung (Leon)
+  [x] REST-API: Upload, List, Get, Delete (Mario)
+  [x] Fehlerbehandlung bei Upload und Parsing (Fabian)
+  [x] Unterstuetzung fuer PDF, PPTX, DOCX, XLSX, HTML, Markdown, Bilder
+
+MILESTONE 3 – KI-Lernzettel (Leon, Mario, Fabian)
+--------------------------------------------------
+  [x] Azure OpenAI (GPT-4.1) Anbindung im Backend (Mario)
+  [x] Lernzettel-Generierung via KI mit strukturiertem Prompt (Fabian)
+  [x] PDF-Export der Lernzettel mit fpdf2 (Fabian)
+  [x] Lernzettel-UI im Frontend mit Download-Funktion (Leon)
+  [x] Download-Workflow: Generierung -> automatischer PDF-Download (Leon)
+  [ ] Karteikarten-Generierung – auf Milestone 4 verschoben
+  [ ] Karteikarten-UI mit Flip-Animation – auf Milestone 4 verschoben
+
+
+3. AKTUELLER FUNKTIONSUMFANG
+================================================================================
+
+Was funktioniert:
+  - Vorlesungsfolien hochladen (Drag & Drop oder Dateiauswahl)
+  - Automatische Inhaltsextraktion via Docling (IBM)
+  - KI-generierte Lernzettel als PDF herunterladen
+  - Mehrere Dokumente verwalten (hinzufuegen, wechseln, loeschen)
+  - Benachrichtigungssystem bei Erfolg/Fehler
+  - Design-System mit CSS Custom Properties
+
+Was noch fehlt (Milestone 4):
+  - Karteikarten-Generierung (Backend-Endpoint ist vorbereitet aber deaktiviert)
+  - Interaktive Karteikarten-UI mit 3D-Flip-Animation
+  - Tab-Navigation zwischen Karteikarten und Lernzettel
+  - Responsives Design fuer mobile Endgeraete
+  - Finales UI-Polish
+
+
+4. WAS IST SCHIEF GELAUFEN? / SCHWIERIGKEITEN
+================================================================================
+
+4.1 Technische Herausforderungen
+---------------------------------
+  - DOCLING SETUP: Die Installation von Docling war anfangs problematisch,
+    da es viele Abhaengigkeiten mit sich bringt. Auf manchen Rechnern im Team
+    gab es Kompatibilitaetsprobleme mit Python-Versionen.
+
+  - AZURE OPENAI KONFIGURATION: Die korrekte Einrichtung der Azure OpenAI
+    Credentials (.env-Datei, Endpoint-URL, API-Version) hat mehrere Versuche
+    gebraucht. Die Dokumentation von Azure war teilweise veraltet.
+
+  - PROMPT ENGINEERING: Die Qualitaet der KI-generierten Lernzettel hing stark
+    vom Prompt ab. Es brauchte mehrere Iterationen, bis die Ergebnisse zufrieden-
+    stellend waren (strukturiert, kompakt, vollstaendig).
+
+  - PDF-GENERIERUNG: Die fpdf2-Bibliothek hat Einschraenkungen bei der Darstellung
+    von komplexem Markdown (verschachtelte Listen, Tabellen). Die Lernzettel-PDFs
+    sehen funktional, aber nicht perfekt aus.
+
+  - GROSSE DATEIEN: Bei umfangreichen Vorlesungsfolien (>50 Seiten) dauert die
+    Verarbeitung durch Docling mehrere Minuten. Das MAX_CONTENT_LENGTH-Limit von
+    15.000 Zeichen kuerzt den Inhalt, was bei langen Vorlesungen zu Informations-
+    verlust fuehrt.
+
+4.2 Organisatorische Herausforderungen
+---------------------------------------
+  - SCOPE CREEP: Urspruenglich waren Karteikarten UND Lernzettel fuer Milestone 3
+    geplant. Wir mussten die Karteikarten auf Milestone 4 verschieben, weil die
+    KI-Integration und das Prompt-Engineering mehr Zeit gekostet haben als erwartet.
+
+  - DEVELOPMENT ENVIRONMENT: Unterschiedliche Node.js- und Python-Versionen im Team
+    fuehrten anfangs zu Inkompatibilitaeten. Haetten wir frueher eine Docker-basierte
+    Entwicklungsumgebung aufgesetzt, haette das Zeit gespart.
+
+  - ZEITMANAGEMENT: Durch paralleles Studium und andere Verpflichtungen war es
+    manchmal schwierig, die Sprint-Ziele vollstaendig zu erreichen.
+
+  - CODE-REVIEW DISZIPLIN: In stressigen Phasen wurden Code-Reviews teilweise
+    uebersprungen, was spaeter zu kleineren Bugs fuehrte.
+
+
+5. WAS WOLLEN WIR ALS TEAM VERBESSERN?
+================================================================================
+
+5.1 Prozess-Verbesserungen
+---------------------------
+  - FRUEHERES TESTING: Wir wollen ab Milestone 4 von Anfang an Tests schreiben
+    (mindestens fuer Backend-Endpoints), statt erst am Ende zu testen.
+
+  - BESSERE SCHAETZUNG: Unsere Sprint-Schaetzungen waren oft zu optimistisch.
+    Fuer Milestone 4 wollen wir mit Story Points und Planning Poker arbeiten.
+
+  - REGELMAESSIGERE STANDUPS: Die Daily Standups sind manchmal ausgefallen.
+    Fuer den naechsten Sprint wollen wir feste Zeiten etablieren (z.B. 10:00 Uhr
+    via Discord).
+
+  - DOKUMENTATION PARALLEL: README und Code-Kommentare sollen parallel zur
+    Entwicklung geschrieben werden, nicht erst am Ende.
+
+5.2 Technische Verbesserungen
+-------------------------------
+  - DOCKER SETUP: Eine docker-compose.yml erstellen, damit jedes Teammitglied
+    die gleiche Entwicklungsumgebung hat.
+
+  - FEHLERBEHANDLUNG: Robustere Fehlerbehandlung im Frontend – aktuell werden
+    manche Edge Cases nicht abgefangen.
+
+  - RATE LIMITING: Azure OpenAI hat Rate Limits. Wir sollten einen Retry-Mechanismus
+    implementieren.
+
+  - PERSISTENZ: Aktuell gehen alle Daten beim Backend-Neustart verloren
+    (documents_store ist ein in-memory dict). Eine SQLite-Datenbank waere sinnvoll.
+
+  - RESPONSIVE DESIGN: Die App funktioniert aktuell nur auf Desktop-Bildschirmen.
+    Mobile Unterstuetzung ist fuer Milestone 4 geplant.
+
+5.3 Teamarbeit
+---------------
+  - PAIR PROGRAMMING: Fuer komplexe Features (wie die KI-Integration) wollen wir
+    oefter Pair Programming einsetzen, um Wissen besser zu teilen.
+
+  - BRANCH-STRATEGIE: Konsequenter mit Feature-Branches und Pull Requests arbeiten,
+    statt direkt auf main zu pushen.
+
+  - WISSEN TEILEN: Jedes Teammitglied sollte mindestens einen Bereich des anderen
+    kennen, um Bus-Factor-Risiken zu reduzieren.
+
+
+6. AUSBLICK – MILESTONE 4
+================================================================================
+
+Fuer den finalen Milestone planen wir:
+
+  1. Karteikarten-Generierung (Backend)
+     - Endpoint aktivieren und Prompt optimieren
+     - JSON-Format: {question, answer} pro Karteikarte
+     - Verantwortlich: Mario
+
+  2. Karteikarten-UI (Frontend)
+     - Interaktive 3D-Flip-Animation
+     - Navigation (vor/zurueck)
+     - Fortschrittsanzeige
+     - Verantwortlich: Leon
+
+  3. Tab-Navigation
+     - Wechsel zwischen Lernzettel und Karteikarten im Viewer
+     - Verantwortlich: Leon
+
+  4. UI-Polish & Responsiveness
+     - Design-System verfeinern
+     - Mobile-freundliches Layout
+     - Verantwortlich: Fabian
+
+  5. Testing & Dokumentation
+     - Backend-Unit-Tests (pytest)
+     - Finales README und Praesentation
+     - Verantwortlich: Alle
+
+
+7. FAZIT
+================================================================================
+
+Trotz einiger Herausforderungen sind wir gut vorangekommen. Die Kernfunktionalitaet
+– Vorlesungsfolien hochladen und KI-generierte Lernzettel erhalten – funktioniert
+zuverlaessig. Die agile Arbeitsweise mit Scrum hat uns geholfen, flexibel auf
+Probleme zu reagieren und den Scope anzupassen.
+
+Die groesste Erkenntnis: KI-Integration (Prompt Engineering, API-Konfiguration)
+braucht mehr Zeit als erwartet. Fuer Milestone 4 planen wir deshalb realistischer
+und setzen auf fruehes Testing.
+
+Als Team haben wir gut zusammengearbeitet. Die Rollenverteilung (Mario: Backend/API,
+Leon: Frontend/UI, Fabian: Integration/Testing) hat sich bewaehrt. Fuer die
+Zukunft wollen wir mehr Pair Programming machen und unser Wissen besser teilen.
+
+================================================================================
+                    Erstellt am: 15. April 2026
+                    Von: Team StudyBuddy (Leon, Mario, Fabian)
+                    Fach: Software Engineering
+================================================================================

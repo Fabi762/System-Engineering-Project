@@ -9,7 +9,6 @@ function App() {
   const [documents, setDocuments] = useState([])
   const [selectedDoc, setSelectedDoc] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false)
   const [isGeneratingNotes, setIsGeneratingNotes] = useState(false)
   const [notification, setNotification] = useState(null)
 
@@ -52,25 +51,6 @@ function App() {
       showNotification('Dokument entfernt')
     } catch {
       showNotification('Fehler beim Entfernen', 'error')
-    }
-  }
-
-  const handleGenerateFlashcards = async () => {
-    if (!selectedDoc) return
-    setIsGeneratingFlashcards(true)
-    try {
-      const res = await fetch(`/api/generate/flashcards/${selectedDoc.id}`, { method: 'POST' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || 'Generierung fehlgeschlagen')
-      }
-      const data = await res.json()
-      updateDocument({ ...selectedDoc, flashcards: data.flashcards })
-      showNotification(`${data.flashcards.length} Karteikarten erstellt!`)
-    } catch (err) {
-      showNotification(err.message, 'error')
-    } finally {
-      setIsGeneratingFlashcards(false)
     }
   }
 
@@ -120,9 +100,7 @@ function App() {
           {selectedDoc ? (
             <DocumentViewer
               document={selectedDoc}
-              onGenerateFlashcards={handleGenerateFlashcards}
               onGenerateNotes={handleGenerateNotes}
-              isGeneratingFlashcards={isGeneratingFlashcards}
               isGeneratingNotes={isGeneratingNotes}
             />
           ) : (

@@ -14,7 +14,7 @@ function Header() {
         </div>
       </div>
       <div className="header-right">
-        <span className="header-badge">Dokumente · Karteikarten · Lernzettel</span>
+        <span className="header-badge">Dokumente · Lernzettel</span>
       </div>
     </header>
   )

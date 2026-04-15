@@ -1,16 +1,10 @@
-import { useState } from 'react'
-import Flashcards from './Flashcards'
 import StudyNotes from './StudyNotes'
 
 function DocumentViewer({
   document: doc,
-  onGenerateFlashcards,
   onGenerateNotes,
-  isGeneratingFlashcards,
   isGeneratingNotes,
 }) {
-  const [activeTab, setActiveTab] = useState('flashcards')
-
   return (
     <div className="viewer">
       <div className="viewer-header">
@@ -22,17 +16,7 @@ function DocumentViewer({
           <h2>{doc.filename}</h2>
         </div>
         <div className="viewer-tabs">
-          <button
-            className={activeTab === 'flashcards' ? 'active' : ''}
-            onClick={() => setActiveTab('flashcards')}
-          >
-            Karteikarten
-            {doc.flashcards && <span className="tab-badge">{doc.flashcards.length}</span>}
-          </button>
-          <button
-            className={activeTab === 'notes' ? 'active' : ''}
-            onClick={() => setActiveTab('notes')}
-          >
+          <button className="active">
             Lernzettel (PDF)
             {doc.notesPdf && <span className="tab-dot" />}
           </button>
@@ -40,22 +24,12 @@ function DocumentViewer({
       </div>
 
       <div className="viewer-content">
-        {activeTab === 'flashcards' && (
-          <Flashcards
-            flashcards={doc.flashcards}
-            onGenerate={onGenerateFlashcards}
-            isGenerating={isGeneratingFlashcards}
-          />
-        )}
-
-        {activeTab === 'notes' && (
-          <StudyNotes
-            notesPdf={doc.notesPdf}
-            docId={doc.id}
-            onGenerate={onGenerateNotes}
-            isGenerating={isGeneratingNotes}
-          />
-        )}
+        <StudyNotes
+          notesPdf={doc.notesPdf}
+          docId={doc.id}
+          onGenerate={onGenerateNotes}
+          isGenerating={isGeneratingNotes}
+        />
       </div>
     </div>
   )

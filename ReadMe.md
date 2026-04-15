@@ -2,35 +2,37 @@
 
 ## Projektuebersicht
 
-**StudyBuddy** ist eine webbasierte Anwendung, die Studierenden hilft, aus Vorlesungsfolien automatisch Lernmaterialien zu erstellen. Mithilfe von kuenstlicher Intelligenz (OpenAI) und fortschrittlicher Dokumentenanalyse (Docling) werden aus hochgeladenen Vorlesungsunterlagen **interaktive Karteikarten** und **strukturierte Lernzettel** generiert.
+**StudyBuddy** ist eine webbasierte Anwendung, die Studierenden hilft, aus Vorlesungsfolien automatisch Lernmaterialien zu erstellen. Mithilfe von kuenstlicher Intelligenz (OpenAI) und fortschrittlicher Dokumentenanalyse (Docling) werden aus hochgeladenen Vorlesungsunterlagen **strukturierte Lernzettel** generiert.
 
 Die Idee: Vorlesungsfolien hochladen, KI arbeiten lassen, fertige Lernhilfen erhalten.
+
+> **Aktueller Stand: Milestone 3** – Lernzettel-Generierung ist funktional. Karteikarten sind fuer Milestone 4 geplant.
 
 ---
 
 ## Team
 
-| Name            | Rolle im Projekt        |
-| --------------- | ----------------------- |
-| [Dein Name]     | Entwickler / Scrum Master (Sprint 1 & 2) |
-| Mario           | Entwickler / Product Owner               |
-| Fabi            | Entwickler / Scrum Master (Sprint 3 & 4) |
+| Name   | Rolle im Projekt                         |
+| ------ | ---------------------------------------- |
+| Leon   | Entwickler / Scrum Master (Sprint 1 & 2) |
+| Mario  | Entwickler / Product Owner               |
+| Fabian | Entwickler / Scrum Master (Sprint 3 & 4) |
 
 **Fach**: Software Engineering
-**Studiengang**: [Studiengang eintragen]
-**Semester**: [Semester eintragen]
 
 ---
 
-## Funktionen
+## Funktionen (Milestone 3)
 
 - **Dokumenten-Upload**: Vorlesungsfolien per Drag & Drop oder Dateiauswahl hochladen
 - **Automatische Inhaltsextraktion**: Docling erkennt Text, Tabellen und Strukturen aus PDF, PPTX, DOCX und weiteren Formaten
-- **KI-Karteikarten**: Automatische Generierung von Frage-Antwort-Karteikarten aus dem Vorlesungsinhalt
-- **KI-Lernzettel**: Kompakte, strukturierte Zusammenfassungen des Vorlesungsstoffs
-- **Interaktive Karteikarten**: Karten mit 3D-Flip-Animation durchgehen und Wissen testen
-- **Mehrere Ansichten**: Formatierte Vorschau, Markdown-Quelltext, Karteikarten und Lernzettel
+- **KI-Lernzettel**: Kompakte, strukturierte Zusammenfassungen des Vorlesungsstoffs als PDF
 - **Dokumentenverwaltung**: Mehrere Vorlesungen verwalten, zwischen ihnen wechseln
+
+### Geplant fuer Milestone 4
+- **KI-Karteikarten**: Automatische Generierung von Frage-Antwort-Karteikarten
+- **Interaktive Karteikarten**: Karten mit 3D-Flip-Animation durchgehen
+- **UI-Polish**: Finales Design, responsives Layout, Benachrichtigungssystem
 
 ---
 
@@ -56,7 +58,6 @@ Benutzer (Browser)
 +------------------+
 |    React Frontend |  Port 5173
 |  - Upload-UI     |
-|  - Karteikarten  |
 |  - Lernzettel    |
 |  - Dokumenten-   |
 |    verwaltung    |
@@ -77,9 +78,9 @@ Benutzer (Browser)
 1. Student laedt Vorlesungsfolie hoch (Frontend -> Backend)
 2. Docling extrahiert den Inhalt und konvertiert ihn in Markdown (Backend)
 3. Student sieht den extrahierten Inhalt (Backend -> Frontend)
-4. Student klickt "Karteikarten generieren" oder "Lernzettel erstellen"
-5. Azure OpenAI generiert die Lernmaterialien aus dem Markdown (Backend -> Azure OpenAI -> Backend)
-6. Ergebnis wird dem Studenten angezeigt (Backend -> Frontend)
+4. Student klickt "Lernzettel erstellen"
+5. Azure OpenAI generiert den Lernzettel aus dem Markdown (Backend -> Azure OpenAI -> Backend)
+6. Lernzettel wird als PDF heruntergeladen (Backend -> Frontend)
 
 ---
 
@@ -127,11 +128,11 @@ Die Rolle des Scrum Masters rotierte zwischen den Sprints, damit jedes Teammitgl
 
 | Aufgabe                           | Verantwortlich | Status     |
 | --------------------------------- | -------------- | ---------- |
-| Git-Repository einrichten         | Fabi           | Erledigt   |
-| React-Projekt mit Vite erstellen  | [Dein Name]    | Erledigt   |
+| Git-Repository einrichten         | Fabian         | Erledigt   |
+| React-Projekt mit Vite erstellen  | Leon           | Erledigt   |
 | FastAPI-Backend aufsetzen         | Mario          | Erledigt   |
 | Projektstruktur festlegen         | Alle           | Erledigt   |
-| CI/CD Pipeline (optional)         | Fabi           | Verschoben |
+| CI/CD Pipeline (optional)         | Fabian         | Verschoben |
 
 **Ergebnis**: Lauffaehiges Grundgeruest mit Frontend und Backend, Entwicklungsumgebung steht.
 
@@ -147,12 +148,12 @@ Die Rolle des Scrum Masters rotierte zwischen den Sprints, damit jedes Teammitgl
 
 | Aufgabe                            | Verantwortlich | Status   |
 | ---------------------------------- | -------------- | -------- |
-| Drag & Drop Upload implementieren | [Dein Name]    | Erledigt |
+| Drag & Drop Upload implementieren | Leon           | Erledigt |
 | Docling-Integration im Backend    | Mario          | Erledigt |
-| Dokument-Ansicht (Markdown)       | Fabi           | Erledigt |
-| Seitenleiste mit Dokumentenliste  | [Dein Name]    | Erledigt |
+| Dokument-Ansicht (Markdown)       | Fabian         | Erledigt |
+| Seitenleiste mit Dokumentenliste  | Leon           | Erledigt |
 | API-Endpunkte (Upload, List, Get) | Mario          | Erledigt |
-| Fehlerbehandlung                  | Fabi           | Erledigt |
+| Fehlerbehandlung                  | Fabian         | Erledigt |
 
 **Ergebnis**: Vollstaendiger Upload-und-Parse-Workflow. Studierende koennen PDFs/PPTX hochladen und den extrahierten Inhalt sehen.
 
@@ -162,59 +163,53 @@ Die Rolle des Scrum Masters rotierte zwischen den Sprints, damit jedes Teammitgl
 
 ---
 
-#### Sprint 3 - KI-Integration (Woche 5-6)
+#### Sprint 3 - KI-Integration: Lernzettel (Woche 5-6)
 
-**Sprint-Ziel**: Automatische Generierung von Karteikarten und Lernzetteln
+**Sprint-Ziel**: Automatische Generierung von Lernzetteln mittels KI
 
-| Aufgabe                            | Verantwortlich | Status   |
-| ---------------------------------- | -------------- | -------- |
-| OpenAI-API Anbindung              | Mario          | Erledigt |
-| Karteikarten-Generierung (Backend)| Mario          | Erledigt |
-| Lernzettel-Generierung (Backend)  | Fabi           | Erledigt |
-| Karteikarten-UI mit Flip-Animation| [Dein Name]    | Erledigt |
-| Lernzettel-Ansicht                | Fabi           | Erledigt |
-| Tab-Navigation im Viewer         | [Dein Name]    | Erledigt |
+| Aufgabe                            | Verantwortlich | Status       |
+| ---------------------------------- | -------------- | ------------ |
+| OpenAI-API Anbindung              | Mario          | Erledigt     |
+| Lernzettel-Generierung (Backend)  | Fabian         | Erledigt     |
+| Lernzettel-Ansicht (Frontend)     | Leon           | Erledigt     |
+| PDF-Export fuer Lernzettel        | Fabian         | Erledigt     |
+| Karteikarten-Generierung         | Mario          | Offen (MS4)  |
+| Karteikarten-UI                  | Leon           | Offen (MS4)  |
 
-**Ergebnis**: KI generiert Karteikarten und Lernzettel aus dem Vorlesungsinhalt. Interaktive Karteikarten mit 3D-Flip.
+**Ergebnis**: KI generiert Lernzettel aus dem Vorlesungsinhalt und stellt sie als PDF zum Download bereit.
 
 **Retrospektive-Erkenntnisse**:
-- Gut: Azure OpenAI (GPT-4.1) liefert qualitativ hochwertige Karteikarten
+- Gut: Azure OpenAI (GPT-4.1) liefert qualitativ hochwertige Zusammenfassungen
 - Verbesserung: Prompt-Engineering erfordert mehrere Iterationen
+- Erkenntnis: Karteikarten-Feature auf Sprint 4 verschoben, um Lernzettel-Qualitaet zu priorisieren
 
 ---
 
-#### Sprint 4 - UI-Polish & Testing (Woche 7-8)
+#### Sprint 4 - Karteikarten & UI-Polish (geplant, Woche 7-8)
 
-**Sprint-Ziel**: Finales Design, Fehlerbehandlung und Praesentation vorbereiten
+**Sprint-Ziel**: Karteikarten-Feature implementieren, finales Design und Testing
 
 | Aufgabe                            | Verantwortlich | Status   |
 | ---------------------------------- | -------------- | -------- |
-| Design-System verfeinern          | [Dein Name]    | Erledigt |
-| Responsives Design                | Fabi           | Erledigt |
-| Fehlerbehandlung verbessern       | Mario          | Erledigt |
-| Benachrichtigungssystem           | [Dein Name]    | Erledigt |
-| README und Dokumentation          | Alle           | Erledigt |
-| Praesentation vorbereiten         | Alle           | Erledigt |
-
-**Ergebnis**: Produktionsreife Anwendung mit professionellem Design und vollstaendiger Dokumentation.
-
-**Retrospektive-Erkenntnisse**:
-- Gut: Agile Arbeitsweise hat gut funktioniert, regelmaessige Reviews waren wertvoll
-- Gut: Rotierendes Scrum-Master-Konzept hat jedem Einblick gegeben
-- Erkenntnis: Frueher mit Testing beginnen haette spaetere Fehler vermieden
+| Karteikarten-Generierung (Backend)| Mario          | Geplant  |
+| Karteikarten-UI mit Flip-Animation| Leon           | Geplant  |
+| Tab-Navigation im Viewer          | Leon           | Geplant  |
+| Design-System verfeinern          | Fabian         | Geplant  |
+| Responsives Design                | Fabian         | Geplant  |
+| README und Dokumentation          | Alle           | Geplant  |
 
 ### User Stories
 
-| ID    | User Story                                                                                       | Prioritaet | Sprint | Akzeptanzkriterien                                                          |
-| ----- | ------------------------------------------------------------------------------------------------ | ---------- | ------ | --------------------------------------------------------------------------- |
-| US-01 | Als Student moechte ich Vorlesungsfolien hochladen, um sie verarbeiten zu lassen                  | Hoch       | 1, 2   | Upload per Drag & Drop und Dateiauswahl, Fortschrittsanzeige               |
-| US-02 | Als Student moechte ich den extrahierten Inhalt sehen, um die Erkennung zu pruefen               | Hoch       | 2      | Formatierte Markdown-Ansicht, Tabellen korrekt dargestellt                 |
-| US-03 | Als Student moechte ich automatisch Karteikarten erhalten, um effizient zu lernen                 | Hoch       | 3      | Mind. 10 Karteikarten pro Dokument, Frage-Antwort-Format                  |
-| US-04 | Als Student moechte ich einen Lernzettel generieren, um eine Zusammenfassung zu haben             | Hoch       | 3      | Strukturierter Markdown-Lernzettel mit Kernkonzepten                       |
-| US-05 | Als Student moechte ich Karteikarten interaktiv durchgehen, um mein Wissen zu testen              | Mittel     | 3, 4   | Flip-Animation, Navigation (vor/zurueck), Fortschrittsanzeige              |
-| US-06 | Als Student moechte ich zwischen Dokumenten wechseln, um verschiedene Vorlesungen zu verwalten    | Mittel     | 2      | Seitenleiste mit Dokumentenliste, aktives Dokument hervorgehoben           |
-| US-07 | Als Student moechte ich den Markdown-Text kopieren, um ihn in Notiz-Apps weiterzuverwenden        | Niedrig    | 2      | Kopier-Button mit Feedback                                                 |
-| US-08 | Als Student moechte ich verschiedene Dateiformate nutzen (PDF, PPTX, DOCX)                        | Mittel     | 2      | Alle gaengigen Vorlesungsformate werden unterstuetzt                       |
+| ID    | User Story                                                                                       | Prioritaet | Sprint | Status                   |
+| ----- | ------------------------------------------------------------------------------------------------ | ---------- | ------ | ------------------------ |
+| US-01 | Als Student moechte ich Vorlesungsfolien hochladen, um sie verarbeiten zu lassen                  | Hoch       | 1, 2   | Erledigt                 |
+| US-02 | Als Student moechte ich den extrahierten Inhalt sehen, um die Erkennung zu pruefen               | Hoch       | 2      | Erledigt                 |
+| US-03 | Als Student moechte ich automatisch Karteikarten erhalten, um effizient zu lernen                 | Hoch       | 4      | Offen (geplant Sprint 4) |
+| US-04 | Als Student moechte ich einen Lernzettel generieren, um eine Zusammenfassung zu haben             | Hoch       | 3      | Erledigt                 |
+| US-05 | Als Student moechte ich Karteikarten interaktiv durchgehen, um mein Wissen zu testen              | Mittel     | 4      | Offen (geplant Sprint 4) |
+| US-06 | Als Student moechte ich zwischen Dokumenten wechseln, um verschiedene Vorlesungen zu verwalten    | Mittel     | 2      | Erledigt                 |
+| US-07 | Als Student moechte ich den Markdown-Text kopieren, um ihn in Notiz-Apps weiterzuverwenden        | Niedrig    | 2      | Erledigt                 |
+| US-08 | Als Student moechte ich verschiedene Dateiformate nutzen (PDF, PPTX, DOCX)                        | Mittel     | 2      | Erledigt                 |
 
 ### Definition of Done
 
@@ -235,15 +230,6 @@ Eine User Story gilt als **erledigt**, wenn:
 | GitHub Projects    | Kanban Board, Sprint-Planung        |
 | Discord            | Taegliche Kommunikation, Standups   |
 | VS Code / Cursor   | Entwicklungsumgebung                |
-| Figma (optional)   | UI-Design und Prototyping           |
-
-### Lessons Learned
-
-1. **Agile Methoden funktionieren auch in kleinen Teams**: Scrum hat uns Struktur gegeben, ohne zu viel Overhead zu erzeugen.
-2. **Fruehes Prototyping zahlt sich aus**: Durch das iterative Vorgehen konnten wir frueher Feedback bekommen und den Kurs korrigieren.
-3. **KI-Integration erfordert Iteration**: Die Qualitaet der KI-Ausgabe haengt stark vom Prompt-Engineering ab - mehrere Iterationen waren noetig.
-4. **Klare API-Grenzen vereinfachen die Arbeit**: Die Trennung in Frontend und Backend hat paralleles Arbeiten ermoeglicht.
-5. **Rotierende Rollen foerdern Verstaendnis**: Jedes Teammitglied hat durch die Rollenrotation ein besseres Verstaendnis fuer den gesamten Prozess entwickelt.
 
 ---
 
@@ -293,23 +279,23 @@ Das Frontend laeuft auf `http://localhost:5173` und leitet API-Aufrufe automatis
 
 1. Browser oeffnen: `http://localhost:5173`
 2. Vorlesungsfolie hochladen (PDF, PPTX, DOCX, ...)
-3. Extrahierten Inhalt pruefen
-4. Auf "Karteikarten" oder "Lernzettel" klicken und generieren lassen
-5. Karteikarten interaktiv durchgehen oder Lernzettel lesen
+3. Auf "Lernzettel erstellen" klicken und generieren lassen
+4. Lernzettel als PDF herunterladen
 
 ---
 
-## API-Endpunkte
+## API-Endpunkte (Milestone 3)
 
-| Methode | Endpunkt                        | Beschreibung                             |
-| ------- | ------------------------------- | ---------------------------------------- |
-| GET     | `/api/health`                   | Health Check                             |
-| POST    | `/api/upload`                   | Dokument hochladen und parsen            |
-| GET     | `/api/documents`                | Alle Dokumente auflisten                 |
-| GET     | `/api/documents/{id}`           | Einzelnes Dokument abrufen               |
-| DELETE  | `/api/documents/{id}`           | Dokument entfernen                       |
-| POST    | `/api/generate/flashcards/{id}` | Karteikarten generieren (KI)            |
-| POST    | `/api/generate/notes/{id}`      | Lernzettel generieren (KI)              |
+| Methode | Endpunkt                        | Beschreibung                             | Status   |
+| ------- | ------------------------------- | ---------------------------------------- | -------- |
+| GET     | `/api/health`                   | Health Check                             | Aktiv    |
+| POST    | `/api/upload`                   | Dokument hochladen und parsen            | Aktiv    |
+| GET     | `/api/documents`                | Alle Dokumente auflisten                 | Aktiv    |
+| GET     | `/api/documents/{id}`           | Einzelnes Dokument abrufen               | Aktiv    |
+| DELETE  | `/api/documents/{id}`           | Dokument entfernen                       | Aktiv    |
+| POST    | `/api/generate/notes/{id}`      | Lernzettel generieren (KI)              | Aktiv    |
+| GET     | `/api/documents/{id}/notes-pdf` | Lernzettel-PDF herunterladen            | Aktiv    |
+| POST    | `/api/generate/flashcards/{id}` | Karteikarten generieren (KI)            | Geplant  |
 
 ---
 

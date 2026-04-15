@@ -112,56 +112,60 @@ async def delete_document(doc_id: str):
     return {"status": "deleted"}
 
 
-@app.post("/api/generate/flashcards/{doc_id}")
-async def generate_flashcards(doc_id: str):
-    if not ai_client:
-        raise HTTPException(
-            status_code=503,
-            detail="Azure OpenAI ist nicht konfiguriert. "
-            "Bitte AZURE_OPENAI_ENDPOINT und AZURE_OPENAI_API_KEY in der .env-Datei setzen.",
-        )
-    if doc_id not in documents_store:
-        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+# --- Karteikarten-Generierung (geplant fuer Sprint 4) ---
+# Der folgende Endpoint ist fuer Milestone 4 vorgesehen und aktuell deaktiviert.
+#
+# @app.post("/api/generate/flashcards/{doc_id}")
+# async def generate_flashcards(doc_id: str):
+#     if not ai_client:
+#         raise HTTPException(
+#             status_code=503,
+#             detail="Azure OpenAI ist nicht konfiguriert. "
+#             "Bitte AZURE_OPENAI_ENDPOINT und AZURE_OPENAI_API_KEY in der .env-Datei setzen.",
+#         )
+#     if doc_id not in documents_store:
+#         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+#
+#     markdown = documents_store[doc_id]["markdown"]
+#     content = markdown[:MAX_CONTENT_LENGTH]
+#     if len(markdown) > MAX_CONTENT_LENGTH:
+#         content += "\n\n[Inhalt gekuerzt...]"
+#
+#     try:
+#         response = await ai_client.chat.completions.create(
+#             model=AZURE_DEPLOYMENT,
+#             messages=[
+#                 {
+#                     "role": "system",
+#                     "content": (
+#                         "Du bist ein Lernassistent fuer Studierende. "
+#                         "Erstelle aus dem gegebenen Vorlesungsinhalt Karteikarten. "
+#                         "Jede Karteikarte hat eine 'question' (praeizse Frage) und "
+#                         "eine 'answer' (kompakte, verstaendliche Antwort). "
+#                         "Erstelle 10-15 Karteikarten, die die wichtigsten Konzepte abdecken. "
+#                         "Antworte ausschliesslich mit einem JSON-Objekt im Format: "
+#                         '{"flashcards": [{"question": "...", "answer": "..."}, ...]}'
+#                     ),
+#                 },
+#                 {
+#                     "role": "user",
+#                     "content": f"Erstelle Karteikarten aus diesem Vorlesungsinhalt:\n\n{content}",
+#                 },
+#             ],
+#             response_format={"type": "json_object"},
+#             temperature=0.7,
+#         )
+#
+#         result = json.loads(response.choices[0].message.content)
+#         flashcards = result.get("flashcards", [])
+#         documents_store[doc_id]["flashcards"] = flashcards
+#         return {"flashcards": flashcards}
+#
+#     except json.JSONDecodeError:
+#         raise HTTPException(status_code=500, detail="KI-Antwort konnte nicht verarbeitet werden")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"KI-Generierung fehlgeschlagen: {str(e)}")
 
-    markdown = documents_store[doc_id]["markdown"]
-    content = markdown[:MAX_CONTENT_LENGTH]
-    if len(markdown) > MAX_CONTENT_LENGTH:
-        content += "\n\n[Inhalt gekuerzt...]"
-
-    try:
-        response = await ai_client.chat.completions.create(
-            model=AZURE_DEPLOYMENT,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Du bist ein Lernassistent fuer Studierende. "
-                        "Erstelle aus dem gegebenen Vorlesungsinhalt Karteikarten. "
-                        "Jede Karteikarte hat eine 'question' (praeizse Frage) und "
-                        "eine 'answer' (kompakte, verstaendliche Antwort). "
-                        "Erstelle 10-15 Karteikarten, die die wichtigsten Konzepte abdecken. "
-                        "Antworte ausschliesslich mit einem JSON-Objekt im Format: "
-                        '{"flashcards": [{"question": "...", "answer": "..."}, ...]}'
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Erstelle Karteikarten aus diesem Vorlesungsinhalt:\n\n{content}",
-                },
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-        )
-
-        result = json.loads(response.choices[0].message.content)
-        flashcards = result.get("flashcards", [])
-        documents_store[doc_id]["flashcards"] = flashcards
-        return {"flashcards": flashcards}
-
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="KI-Antwort konnte nicht verarbeitet werden")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"KI-Generierung fehlgeschlagen: {str(e)}")
 
 
 def markdown_to_pdf(md_text: str, doc_filename: str) -> bytes:

@@ -1,0 +1,117 @@
+User Story 1: Projektgrundlage aufsetzen
+
+Beschreibung:
+Als Entwickler möchte ich die technische Basis des Projekts Schritt für Schritt aufbauen, damit das System aus Frontend, Backend und einer stabilen Entwicklungsumgebung besteht.
+
+Akzeptanzkriterien:
+- Das Repository enthält das React-Frontend und das FastAPI-Backend.
+- Das Projekt kann lokal gestartet werden (Frontend mit Vite, Backend mit FastAPI).
+- Es gibt eine klare Ordnerstruktur mit `my-app/` für React und `backend/` für Python.
+- Umgebungsvariablen und Abhängigkeiten sind dokumentiert.
+
+Tasks:
+1. Projektrepository anlegen und initiale Dateien erstellen.
+   - Beschreibe die Verzeichnisstruktur und lege die Basisdateien wie `ReadMe.md`, `package.json`, `requirements.txt` und Starter-Skripte (`start.sh`, `stop.sh`) an.
+2. React-Frontend mit Vite einrichten.
+   - Erstelle das Frontend-Grundgerüst, richte `App.jsx`, `main.jsx`, `index.html` und grundlegende Komponenten ein.
+3. FastAPI-Backend konfigurieren.
+   - Implementiere ein einfaches Backend mit CORS, Konfigurationsdateien und einer Startdatei `backend/main.py`.
+4. Entwicklungsumgebung dokumentieren.
+   - Beschreibe im `ReadMe.md` das lokale Setup, benötigte Node- und Python-Versionen sowie Startbefehle.
+
+---
+
+User Story 2: Dokumenten-Upload und -Parsing implementieren
+
+Beschreibung:
+Als Nutzer möchte ich Vorlesungsfolien hochladen und den extrahierten Inhalt sehen können, damit ich aus meinen Dokumenten automatisch Lernmaterial erzeugen kann.
+
+Akzeptanzkriterien:
+- Benutzer können Dateien per Auswahl oder Drag & Drop hochladen.
+- Das Backend speichert die Datei und wandelt sie in Markdown um.
+- Der Nutzer sieht eine Liste hochgeladener Vorlesungen mit Dateityp und Uploadzeit.
+- Der Nutzer kann ein Dokument auswählen und Informationen dazu ansehen.
+
+Tasks:
+1. Upload-Komponente im Frontend erstellen.
+   - Implementiere `FileUpload` mit Datei-Auswahl, Drag & Drop und Ladezustand.
+2. Upload-Endpunkt im Backend bauen.
+   - Implementiere `POST /api/upload` mit Speicherung im Upload-Ordner und Rückgabe von Metadaten.
+3. Docling-Parsing einbinden.
+   - Integriere `DocumentConverter` und konvertiere hochgeladene Dateien in Markdown.
+4. Dokumentliste und Auswahl darstellen.
+   - Zeige im Sidebar-Panel alle hochgeladenen Dokumente an und füge Auswahl- und Löschfunktionen hinzu.
+
+---
+
+User Story 3: Lernzettel-Generierung mit KI
+
+Beschreibung:
+Als Studierender möchte ich aus meinen hochgeladenen Vorlesungsfolien automatisch einen kompakten Lernzettel generieren lassen, damit ich den Stoff schnell wiederholen kann.
+
+Akzeptanzkriterien:
+- Der Nutzer kann für ein ausgewähltes Dokument einen Lernzettel generieren.
+- Das Backend ruft die KI-API auf und erstellt einen PDF-Lernzettel.
+- Der Nutzer erhält einen Download-Link bzw. die PDF wird heruntergeladen.
+- Fehler im Generierungsprozess werden verständlich angezeigt.
+
+Tasks:
+1. KI-Client und API-Endpoint vorbereiten.
+   - Konfiguriere Azure OpenAI im Backend und implementiere `POST /api/generate/notes/{doc_id}`.
+2. PDF-Render-Logik erstellen.
+   - Entwickle den Markdown-zu-PDF-Renderer mit übersichtlicher Formatierung und Farben.
+3. Frontend-Button für Lernzettel hinzufügen.
+   - Ergänze `DocumentViewer` und `StudyNotes` um eine Schaltfläche zum Generieren und Downloaden.
+4. Statusanzeigen und Fehlerbehandlung integrieren.
+   - Zeige Ladeindikatoren, Erfolgsmeldungen und Fehlermeldungen im Frontend an.
+
+---
+
+User Story 4: Dokumentenverwaltung und Nutzerführung verbessern
+
+Beschreibung:
+Als Nutzer möchte ich meine Dokumente einfach verwalten können und jederzeit sehen, welche Dateien bereits verarbeitet wurden, damit der Arbeitsfluss klar und nachvollziehbar bleibt.
+
+Akzeptanzkriterien:
+- Nutzer können Dokumente aus der Liste löschen.
+- Ausgewählte Dokumente zeigen ihren Status (z.B. vorhanden, Lernzettel generiert).
+- Ein neuer Upload setzt die Ansicht zurück und führt die Nutzer in den Upload-Prozess.
+- Benachrichtigungen informieren über erfolgreiche Aktionen und Fehler.
+
+Tasks:
+1. Löschfunktion im Backend und Frontend implementieren.
+   - Erstelle den Endpoint `DELETE /api/documents/{doc_id}` und die Frontend-Logik für die Entfernung.
+2. Status-Icons und Hinweise im Sidebar anzeigen.
+   - Zeige z.B. eine Markierung für Dokumente mit generiertem Lernzettel an.
+3. Upload-Flow klar strukturieren.
+   - Füge einen Button für neue Uploads hinzu und stelle sicher, dass beim Klick die Upload-Ansicht angezeigt wird.
+4. Benachrichtigungssystem ergänzen.
+   - Implementiere Toasts oder Banner für Upload-Erfolg, Löschung und Fehler.
+
+---
+
+User Story 5: Zukunftsfähige Erweiterung auf Karteikarten und Quiz
+
+Beschreibung:
+Als Nutzer möchte ich zusätzlich zum Lernzettel interaktive Karteikarten und Quizfragen erhalten, damit ich meinen Lernstoff aktiv wiederholen kann.
+
+Akzeptanzkriterien:
+- Das System hat einen klaren Plan für die Integration von Karteikarten und Quiz.
+- Es existieren vorbereitende Komponenten und Backend-Endpunkte, die später erweitert werden können.
+- Nutzer werden im UI auf die kommenden Funktionen hingewiesen.
+- Die Architektur bleibt erweiterbar für KI-basierte Generierung von Fragen und Antworten.
+
+Tasks:
+1. API-Stub für Karteikarten anlegen.
+   - Plane und dokumentiere `POST /api/generate/flashcards/{doc_id}` im Backend als zukünftigen Endpoint.
+2. Flashcards-Komponente vorbereiten.
+   - Implementiere `Flashcards.jsx` mit Platzhalter-UI, Flip-Animation und Navigation.
+3. Quiz-Roadmap skizzieren.
+   - Lege fest, wie ein Quiz-Tab aussehen soll, einschließlich Multiple-Choice und Auswertung.
+4. UI-Navigation für kommende Features vorbereiten.
+   - Erweitere `DocumentViewer` um Platzhalter-Tabs für Karteikarten und Quiz, damit spätere Erweiterungen nahtlos integriert werden können.
+
+---
+
+Hinweis zum Vorgehen:
+Diese User Stories begleiten den Projektaufbau Schritt für Schritt vom Grundgerüst über Upload und KI-Generierung bis zur geplanten Erweiterung um interaktive Lernhilfen. Jede Story ist so formuliert, dass Entwickler das Feature in klaren Schritten umsetzen und später Karteikarten sowie Quiz vollständig integrieren können.

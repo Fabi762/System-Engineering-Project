@@ -1,0 +1,26 @@
+@startuml StudyBuddy_Use_Case
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Student" as student
+
+rectangle "StudyBuddy" {
+    usecase "Dokument hochladen" as UC1
+    usecase "Inhalt ansehen" as UC2
+    usecase "Lernzettel generieren" as UC3
+    usecase "Lernzettel herunterladen" as UC4
+    usecase "Dokument löschen" as UC5
+    usecase "Karteikarten generieren\n(geplant)" as UC6
+}
+
+student --> UC1
+student --> UC2
+student --> UC3
+student --> UC5
+student --> UC6
+
+UC1 ..> UC2 : <<include>>
+UC3 ..> UC4 : <<include>>
+
+@enduml

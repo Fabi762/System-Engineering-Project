@@ -1,27 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
-import Header from './components/Header'
-import Sidebar from './components/Sidebar'
-import FileUpload from './components/FileUpload'
-import DocumentViewer from './components/DocumentViewer'
+import Masthead from './components/Masthead'
+import Library  from './components/Library'
+import Lecture  from './components/Lecture'
+import Upload   from './components/Upload'
+import Toast    from './components/Toast'
 
 function App() {
-  const [documents, setDocuments] = useState([])
-  const [selectedDoc, setSelectedDoc] = useState(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isGeneratingNotes, setIsGeneratingNotes] = useState(false)
-  const [notification, setNotification] = useState(null)
+  const [documents,          setDocuments]          = useState([])
+  const [view,               setView]               = useState({ name: 'library', lecture: null })
+  const [isUploading,        setIsUploading]        = useState(false)
+  const [isGeneratingNotes,  setIsGeneratingNotes]  = useState(false)
+  const [toast,              setToast]              = useState(null)
+  const [theme,              setTheme]              = useState(
+    () => localStorage.getItem('sb-theme') || 'paper'
+  )
 
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type })
-    setTimeout(() => setNotification(null), 4000)
+  // Apply theme to <html>
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : '')
+    localStorage.setItem('sb-theme', theme)
+  }, [theme])
+
+  const showToast = (text, kind = 'success') => {
+    setToast({ text, kind })
+    setTimeout(() => setToast(null), 2800)
   }
 
   const updateDocument = (updatedDoc) => {
-    setSelectedDoc(updatedDoc)
-    setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
+    setDocuments(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d))
+    if (view.lecture?.id === updatedDoc.id) {
+      setView(v => ({ ...v, lecture: updatedDoc }))
+    }
   }
 
+  // ── Navigation ──────────────────────────────────────────────
+  const goLibrary  = () => setView({ name: 'library', lecture: null })
+  const goUpload   = () => setView({ name: 'upload',  lecture: null })
+  const openLecture = (doc) => setView({ name: 'lecture', lecture: doc })
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'paper' : 'dark')
+
+  // ── API handlers (unchanged logic) ──────────────────────────
   const handleUpload = async (file) => {
     setIsUploading(true)
     try {
@@ -33,11 +53,11 @@ function App() {
         throw new Error(err.detail || 'Upload fehlgeschlagen')
       }
       const doc = await res.json()
-      setDocuments((prev) => [doc, ...prev])
-      setSelectedDoc(doc)
-      showNotification(`"${doc.filename}" erfolgreich verarbeitet`)
+      setDocuments(prev => [doc, ...prev])
+      goLibrary()
+      showToast(`"${doc.filename}" erfolgreich verarbeitet`)
     } catch (err) {
-      showNotification(err.message, 'error')
+      showToast(err.message, 'error')
     } finally {
       setIsUploading(false)
     }
@@ -46,39 +66,38 @@ function App() {
   const handleDelete = async (id) => {
     try {
       await fetch(`/api/documents/${id}`, { method: 'DELETE' })
-      setDocuments((prev) => prev.filter((d) => d.id !== id))
-      if (selectedDoc?.id === id) setSelectedDoc(null)
-      showNotification('Dokument entfernt')
+      setDocuments(prev => prev.filter(d => d.id !== id))
+      goLibrary()
+      showToast('Dokument entfernt')
     } catch {
-      showNotification('Fehler beim Entfernen', 'error')
+      showToast('Fehler beim Entfernen', 'error')
     }
   }
 
   const handleGenerateNotes = async () => {
-    if (!selectedDoc) return
+    const doc = view.lecture
+    if (!doc) return
     setIsGeneratingNotes(true)
     try {
-      const res = await fetch(`/api/generate/notes/${selectedDoc.id}`, { method: 'POST' })
+      const res = await fetch(`/api/generate/notes/${doc.id}`, { method: 'POST' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Generierung fehlgeschlagen')
       }
-
-      const pdfRes = await fetch(`/api/documents/${selectedDoc.id}/notes-pdf`)
-      const blob = await pdfRes.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Lernzettel_${selectedDoc.filename}.pdf`
+      const pdfRes = await fetch(`/api/documents/${doc.id}/notes-pdf`)
+      const blob   = await pdfRes.blob()
+      const url    = URL.createObjectURL(blob)
+      const a      = document.createElement('a')
+      a.href       = url
+      a.download   = `Lernzettel_${doc.filename}.pdf`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-
-      updateDocument({ ...selectedDoc, notesPdf: true })
-      showNotification('Lernzettel als PDF heruntergeladen!')
+      updateDocument({ ...doc, notesPdf: true })
+      showToast('Lernzettel als PDF heruntergeladen!')
     } catch (err) {
-      showNotification(err.message, 'error')
+      showToast(err.message, 'error')
     } finally {
       setIsGeneratingNotes(false)
     }
@@ -86,45 +105,41 @@ function App() {
 
   return (
     <div className="app">
-      <Header />
-      <div className="app-body">
-        <Sidebar
-          documents={documents}
-          selectedDoc={selectedDoc}
-          onSelect={setSelectedDoc}
-          onDelete={handleDelete}
-          onNewUpload={() => setSelectedDoc(null)}
-          isUploading={isUploading}
-        />
-        <main className="main-content">
-          {selectedDoc ? (
-            <DocumentViewer
-              document={selectedDoc}
-              onGenerateNotes={handleGenerateNotes}
-              isGeneratingNotes={isGeneratingNotes}
-            />
-          ) : (
-            <FileUpload onUpload={handleUpload} isUploading={isUploading} />
-          )}
-        </main>
-      </div>
+      <Masthead
+        view={view.name}
+        theme={theme}
+        onGoLibrary={goLibrary}
+        onGoUpload={goUpload}
+        onToggleTheme={toggleTheme}
+      />
 
-      {notification && (
-        <div className={`notification notification-${notification.type}`}>
-          {notification.type === 'success' ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
-          )}
-          <span>{notification.message}</span>
-        </div>
-      )}
+      <main className="app-main">
+        {view.name === 'library' && (
+          <Library
+            documents={documents}
+            onOpen={openLecture}
+            onUpload={goUpload}
+          />
+        )}
+        {view.name === 'lecture' && (
+          <Lecture
+            doc={view.lecture}
+            onBack={goLibrary}
+            onDelete={() => handleDelete(view.lecture.id)}
+            onGenerateNotes={handleGenerateNotes}
+            isGeneratingNotes={isGeneratingNotes}
+          />
+        )}
+        {view.name === 'upload' && (
+          <Upload
+            onUpload={handleUpload}
+            onCancel={goLibrary}
+            isUploading={isUploading}
+          />
+        )}
+      </main>
+
+      {toast && <Toast text={toast.text} kind={toast.kind} />}
     </div>
   )
 }

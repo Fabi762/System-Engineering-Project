@@ -1,8 +1,8 @@
 fastapi
-uvicorn[standard]
+uvicorn
 python-multipart
-docling
-openai
+pypdf
+httpx
 python-dotenv
 fpdf2
 markdown

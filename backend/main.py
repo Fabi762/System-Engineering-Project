@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from docling.document_converter import DocumentConverter
-from openai import AsyncAzureOpenAI
+from pypdf import PdfReader
+import httpx
 from fpdf import FPDF
 
 load_dotenv()
@@ -29,28 +29,14 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MAX_CONTENT_LENGTH = 15000
 
-converter = DocumentConverter()
 documents_store: dict = {}
 
-AZURE_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-AZURE_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1")
-
-ai_client = (
-    AsyncAzureOpenAI(
-        azure_endpoint=AZURE_ENDPOINT,
-        api_key=AZURE_API_KEY,
-        api_version=AZURE_API_VERSION,
-    )
-    if AZURE_ENDPOINT and AZURE_API_KEY
-    else None
-)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "ai_available": ai_client is not None}
+    return {"status": "ok", "ai_available": GEMINI_API_KEY is not None}
 
 
 @app.post("/api/upload")
@@ -64,14 +50,25 @@ async def upload_document(file: UploadFile = File(...)):
         f.write(content)
 
     try:
-        result = converter.convert(file_path)
-        markdown = result.document.export_to_markdown()
+        extracted_text = ""
+        filename_lower = safe_filename.lower()
+        
+        if filename_lower.endswith(".pdf"):
+            reader = PdfReader(file_path)
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    extracted_text += text + "\n\n"
+        else:
+            # Fallback für Text/Markdown Dateien
+            with open(file_path, "r", encoding="utf-8", errors="replace") as text_file:
+                extracted_text = text_file.read()
 
         doc = {
             "id": doc_id,
             "filename": file.filename,
             "uploaded_at": datetime.now().isoformat(),
-            "markdown": markdown,
+            "markdown": extracted_text,
         }
         documents_store[doc_id] = {**doc, "file_path": file_path}
         return doc
@@ -120,8 +117,8 @@ async def delete_document(doc_id: str):
 #     if not ai_client:
 #         raise HTTPException(
 #             status_code=503,
-#             detail="Azure OpenAI ist nicht konfiguriert. "
-#             "Bitte AZURE_OPENAI_ENDPOINT und AZURE_OPENAI_API_KEY in der .env-Datei setzen.",
+#             detail="Google Gemini ist nicht konfiguriert. "
+#             "Bitte GEMINI_API_KEY in der .env-Datei setzen.",
 #         )
 #     if doc_id not in documents_store:
 #         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
@@ -132,31 +129,27 @@ async def delete_document(doc_id: str):
 #         content += "\n\n[Inhalt gekuerzt...]"
 #
 #     try:
-#         response = await ai_client.chat.completions.create(
-#             model=AZURE_DEPLOYMENT,
-#             messages=[
-#                 {
-#                     "role": "system",
-#                     "content": (
-#                         "Du bist ein Lernassistent fuer Studierende. "
-#                         "Erstelle aus dem gegebenen Vorlesungsinhalt Karteikarten. "
-#                         "Jede Karteikarte hat eine 'question' (praeizse Frage) und "
-#                         "eine 'answer' (kompakte, verstaendliche Antwort). "
-#                         "Erstelle 10-15 Karteikarten, die die wichtigsten Konzepte abdecken. "
-#                         "Antworte ausschliesslich mit einem JSON-Objekt im Format: "
-#                         '{"flashcards": [{"question": "...", "answer": "..."}, ...]}'
-#                     ),
-#                 },
-#                 {
-#                     "role": "user",
-#                     "content": f"Erstelle Karteikarten aus diesem Vorlesungsinhalt:\n\n{content}",
-#                 },
+#         response = await ai_client.aio.models.generate_content(
+#             model="gemini-2.5-flash",
+#             contents=[
+#                 f"Erstelle Karteikarten aus diesem Vorlesungsinhalt:\n\n{content}"
 #             ],
-#             response_format={"type": "json_object"},
-#             temperature=0.7,
+#             config=types.GenerateContentConfig(
+#                 system_instruction=(
+#                     "Du bist ein Lernassistent fuer Studierende. "
+#                     "Erstelle aus dem gegebenen Vorlesungsinhalt Karteikarten. "
+#                     "Jede Karteikarte hat eine 'question' (praeizse Frage) und "
+#                     "eine 'answer' (kompakte, verstaendliche Antwort). "
+#                     "Erstelle 10-15 Karteikarten, die die wichtigsten Konzepte abdecken. "
+#                     "Antworte ausschliesslich mit einem JSON-Objekt im Format: "
+#                     '{"flashcards": [{"question": "...", "answer": "..."}, ...]}'
+#                 ),
+#                 response_mime_type="application/json",
+#                 temperature=0.7,
+#             ),
 #         )
 #
-#         result = json.loads(response.choices[0].message.content)
+#         result = json.loads(response.text)
 #         flashcards = result.get("flashcards", [])
 #         documents_store[doc_id]["flashcards"] = flashcards
 #         return {"flashcards": flashcards}
@@ -506,11 +499,11 @@ STUDY_NOTES_SYSTEM_PROMPT = (
 
 @app.post("/api/generate/notes/{doc_id}")
 async def generate_notes(doc_id: str):
-    if not ai_client:
+    if not GEMINI_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="Azure OpenAI ist nicht konfiguriert. "
-            "Bitte AZURE_OPENAI_ENDPOINT und AZURE_OPENAI_API_KEY in der .env-Datei setzen.",
+            detail="Google Gemini ist nicht konfiguriert. "
+            "Bitte GEMINI_API_KEY in der .env-Datei setzen.",
         )
     if doc_id not in documents_store:
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
@@ -521,25 +514,26 @@ async def generate_notes(doc_id: str):
         content += "\n\n[Inhalt gekuerzt...]"
 
     try:
-        response = await ai_client.chat.completions.create(
-            model=AZURE_DEPLOYMENT,
-            messages=[
-                {
-                    "role": "system",
-                    "content": STUDY_NOTES_SYSTEM_PROMPT,
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        "Erstelle einen didaktisch aufbereiteten Lernzettel "
-                        "aus diesem Vorlesungsinhalt:\n\n" + content
-                    ),
-                },
-            ],
-            temperature=0.5,
-        )
-
-        notes_markdown = response.choices[0].message.content
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        payload = {
+            "systemInstruction": {
+                "parts": [{"text": STUDY_NOTES_SYSTEM_PROMPT}]
+            },
+            "contents": [{
+                "parts": [{"text": "Erstelle einen didaktisch aufbereiteten Lernzettel aus diesem Vorlesungsinhalt:\n\n" + content}]
+            }],
+            "generationConfig": {
+                "temperature": 0.5
+            }
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, timeout=60.0)
+            response.raise_for_status()
+            
+        data = response.json()
+        notes_markdown = data["candidates"][0]["content"]["parts"][0]["text"]
 
         pdf_bytes = markdown_to_pdf(notes_markdown, documents_store[doc_id]["filename"])
         pdf_path = os.path.join(UPLOAD_DIR, f"{doc_id}_lernzettel.pdf")

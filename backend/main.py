@@ -27,7 +27,7 @@ app.add_middleware(
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-MAX_CONTENT_LENGTH = 15000
+MAX_CONTENT_LENGTH = 6000
 
 documents_store: dict = {}
 
@@ -514,7 +514,7 @@ async def generate_notes(doc_id: str):
         content += "\n\n[Inhalt gekuerzt...]"
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
         
         payload = {
             "systemInstruction": {

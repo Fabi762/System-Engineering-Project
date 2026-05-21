@@ -9,7 +9,7 @@ function Masthead({ view, theme, onGoLibrary, onGoUpload, onToggleTheme }) {
         <div className="masthead-left">
           <a className="brand" onClick={onGoLibrary}>
             <span className="brand-mark">S</span>
-            <span className="brand-name">StudyBuddy</span>
+            <span className="brand-name">CoolSchoolTool</span>
           </a>
           <nav className="masthead-nav">
             <button

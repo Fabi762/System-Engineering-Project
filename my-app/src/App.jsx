@@ -86,10 +86,13 @@ function App() {
       }
       const pdfRes = await fetch(`/api/documents/${doc.id}/notes-pdf`)
       const blob   = await pdfRes.blob()
+      const disposition = pdfRes.headers.get('content-disposition') || ''
+      const match = disposition.match(/filename="?([^";]+)"?/i)
+      const downloadName = match?.[1] || `Lernzettel_${doc.filename.replace(/\.[^.]+$/, '')}.pdf`
       const url    = URL.createObjectURL(blob)
       const a      = document.createElement('a')
       a.href       = url
-      a.download   = `Lernzettel_${doc.filename}.pdf`
+      a.download   = downloadName
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

@@ -2,6 +2,8 @@ import os
 import re
 import uuid
 import json
+import shutil
+import subprocess
 import tempfile
 from datetime import datetime
 
@@ -11,9 +13,6 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
 import httpx
-from fpdf import FPDF
-from matplotlib.mathtext import math_to_image
-from PIL import Image
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
@@ -41,20 +40,17 @@ AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 
 
 def azure_openai_configured() -> bool:
-    return all(
-        [
-            AZURE_OPENAI_ENDPOINT,
-            AZURE_OPENAI_API_KEY,
-            AZURE_OPENAI_DEPLOYMENT,
-            AZURE_OPENAI_API_VERSION,
-        ]
-    )
+    return all([
+        AZURE_OPENAI_ENDPOINT,
+        AZURE_OPENAI_API_KEY,
+        AZURE_OPENAI_DEPLOYMENT,
+        AZURE_OPENAI_API_VERSION,
+    ])
 
 
 def _document_stem(filename: str) -> str:
     base = os.path.basename(filename or "")
     known_extensions = {".pdf", ".docx", ".pptx", ".xlsx", ".txt", ".md", ".html"}
-
     while True:
         stem, ext = os.path.splitext(base)
         if not stem or ext.lower() not in known_extensions:
@@ -68,6 +64,10 @@ def _build_notes_filename(source_filename: str) -> str:
         return f"{stem}.pdf"
     return f"Lernzettel_{stem}.pdf"
 
+
+# ---------------------------------------------------------------------------
+#  API Endpoints
+# ---------------------------------------------------------------------------
 
 @app.get("/api/health")
 async def health_check():
@@ -86,16 +86,13 @@ async def upload_document(file: UploadFile = File(...)):
 
     try:
         extracted_text = ""
-        filename_lower = safe_filename.lower()
-        
-        if filename_lower.endswith(".pdf"):
+        if safe_filename.lower().endswith(".pdf"):
             reader = PdfReader(file_path)
             for page in reader.pages:
                 text = page.extract_text()
                 if text:
                     extracted_text += text + "\n\n"
         else:
-            # Fallback für Text/Markdown Dateien
             with open(file_path, "r", encoding="utf-8", errors="replace") as text_file:
                 extracted_text = text_file.read()
 
@@ -145,203 +142,25 @@ async def delete_document(doc_id: str):
 
 
 # --- Karteikarten-Generierung (geplant fuer Sprint 4) ---
-# Der folgende Endpoint ist fuer Milestone 4 vorgesehen und aktuell deaktiviert.
-#
 # @app.post("/api/generate/flashcards/{doc_id}")
-# async def generate_flashcards(doc_id: str):
-#     if not ai_client:
-#         raise HTTPException(
-#             status_code=503,
-#             detail="Azure OpenAI ist nicht konfiguriert. "
-#             "Bitte AZURE_OPENAI_* in der .env-Datei setzen.",
-#         )
-#     if doc_id not in documents_store:
-#         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
-#
-#     markdown = documents_store[doc_id]["markdown"]
-#     content = markdown[:MAX_CONTENT_LENGTH]
-#     if len(markdown) > MAX_CONTENT_LENGTH:
-#         content += "\n\n[Inhalt gekuerzt...]"
-#
-#     try:
-#         response = await ai_client.aio.models.generate_content(
-#             model="gemini-2.5-flash",
-#             contents=[
-#                 f"Erstelle Karteikarten aus diesem Vorlesungsinhalt:\n\n{content}"
-#             ],
-#             config=types.GenerateContentConfig(
-#                 system_instruction=(
-#                     "Du bist ein Lernassistent fuer Studierende. "
-#                     "Erstelle aus dem gegebenen Vorlesungsinhalt Karteikarten. "
-#                     "Jede Karteikarte hat eine 'question' (praeizse Frage) und "
-#                     "eine 'answer' (kompakte, verstaendliche Antwort). "
-#                     "Erstelle 10-15 Karteikarten, die die wichtigsten Konzepte abdecken. "
-#                     "Antworte ausschliesslich mit einem JSON-Objekt im Format: "
-#                     '{"flashcards": [{"question": "...", "answer": "..."}, ...]}'
-#                 ),
-#                 response_mime_type="application/json",
-#                 temperature=0.7,
-#             ),
-#         )
-#
-#         result = json.loads(response.text)
-#         flashcards = result.get("flashcards", [])
-#         documents_store[doc_id]["flashcards"] = flashcards
-#         return {"flashcards": flashcards}
-#
-#     except json.JSONDecodeError:
-#         raise HTTPException(status_code=500, detail="KI-Antwort konnte nicht verarbeitet werden")
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"KI-Generierung fehlgeschlagen: {str(e)}")
+# async def generate_flashcards(doc_id: str): ...
 
 
 # ---------------------------------------------------------------------------
-#  PDF-Rendering – Custom Markdown-to-PDF Renderer
+#  LaTeX PDF Generation
 # ---------------------------------------------------------------------------
-
-# Color palette
-_C_PRIMARY = (79, 70, 229)
-_C_PRIMARY_LIGHT = (238, 242, 255)
-_C_HEADING2 = (30, 64, 175)
-_C_HEADING3 = (67, 56, 202)
-_C_TEXT = (15, 23, 42)
-_C_TEXT_SEC = (71, 85, 105)
-_C_QUOTE_BG = (239, 246, 255)
-_C_QUOTE_BORDER = (59, 130, 246)
-_C_IMPORTANT_BG = (254, 252, 232)
-_C_IMPORTANT_BORDER = (217, 158, 27)
-_C_RULE = (203, 213, 225)
-_C_BULLET = (99, 102, 241)
-_C_WHITE = (255, 255, 255)
-
-
-def _strip_bold(text: str) -> str:
-    """Remove **bold** markers and return plain text."""
-    return re.sub(r"\*\*(.*?)\*\*", r"\1", text)
-
-
-def _strip_italic(text: str) -> str:
-    """Remove *italic* markers and return plain text."""
-    return re.sub(r"(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)", r"\1", text)
-
-
-def _clean_text(text: str) -> str:
-    """Remove all inline Markdown formatting."""
-    text = _strip_bold(text)
-    text = _strip_italic(text)
-    text = re.sub(r"`(.*?)`", r"\1", text)  # inline code
-    return text
-
-
-def _split_math_segments(text: str) -> list[tuple[str, str]]:
-    """Split a line into plain text and LaTeX math segments."""
-    segments: list[tuple[str, str]] = []
-    cursor = 0
-    pattern = re.compile(r"\$\$(.+?)\$\$|\$(.+?)\$", re.DOTALL)
-
-    for match in pattern.finditer(text):
-        if match.start() > cursor:
-            segments.append(("text", text[cursor:match.start()]))
-        math_expr = match.group(1) or match.group(2) or ""
-        segments.append(("math", math_expr.strip()))
-        cursor = match.end()
-
-    if cursor < len(text):
-        segments.append(("text", text[cursor:]))
-
-    return segments
-
-
-def _render_math_image(math_expr: str, font_size: int = 10) -> str:
-    """Render a math expression to a temporary PNG and return its path."""
-    safe_name = re.sub(r"[^A-Za-z0-9]+", "_", math_expr).strip("_") or "math"
-    cache_name = f"studybuddy_{safe_name[:80]}_{font_size}.png"
-    cache_path = os.path.join(tempfile.gettempdir(), cache_name)
-
-    if not os.path.exists(cache_path):
-        math_to_image(math_expr, cache_path, dpi=300, format="png", color="black")
-
-    return cache_path
-
-
-def _write_segment_with_math(pdf: FPDF, text: str, size: float, line_h: float, bold: bool):
-    """Write text and inline math images on one line."""
-    for kind, value in _split_math_segments(text):
-        if kind == "text":
-            if value:
-                pdf.set_font("Helvetica", "B" if bold else "", size)
-                pdf.write(line_h, value)
-            continue
-
-        math_expr = value.strip()
-        if not math_expr:
-            continue
-        if not math_expr.startswith("$"):
-            math_expr = f"${math_expr}$"
-
-        image_path = _render_math_image(math_expr, font_size=max(10, int(size) + 1))
-        with Image.open(image_path) as img:
-            pixel_w, pixel_h = img.size
-
-        x = pdf.get_x()
-        y = pdf.get_y() + 0.25
-        draw_h = max(4.0, line_h - 0.2)
-        draw_w = max(2.0, (pixel_w / pixel_h) * draw_h)
-        pdf.image(image_path, x=x, y=y, h=draw_h, w=draw_w)
-        pdf.set_x(x + draw_w + 1.0)
-
-
-def _write_rich_line(pdf: FPDF, text: str, size: float = 10, line_h: float = 5.5):
-    """Write a single line that may contain **bold** segments."""
-    parts = re.split(r"(\*\*.*?\*\*)", text)
-    for part in parts:
-        if part.startswith("**") and part.endswith("**"):
-            _write_segment_with_math(pdf, part[2:-2], size=size, line_h=line_h, bold=True)
-        else:
-            cleaned = re.sub(r"`(.*?)`", r"\1", part)
-            _write_segment_with_math(pdf, cleaned, size=size, line_h=line_h, bold=False)
-    pdf.ln(line_h)
-
-
-def _estimate_lines(pdf: FPDF, text: str, width: float, size: float = 10) -> int:
-    """Estimate how many wrapped lines *text* will need at the given font size."""
-    pdf.set_font("Helvetica", "", size)
-    words = text.split()
-    if not words:
-        return 1
-    lines = 1
-    current_w = 0.0
-    space_w = pdf.get_string_width(" ")
-    for word in words:
-        word_w = pdf.get_string_width(word)
-        if current_w + word_w > width and current_w > 0:
-            lines += 1
-            current_w = word_w + space_w
-        else:
-            current_w += word_w + space_w
-    return lines
-
-
-def _ensure_space(pdf: FPDF, needed: float):
-    """Add a page break if there is not enough vertical space left."""
-    if pdf.get_y() + needed > pdf.h - pdf.b_margin:
-        pdf.add_page()
-
 
 def markdown_to_latex_and_pdf(md_text: str, doc_filename: str) -> bytes:
-    """Convert Markdown study notes into a LaTeX document, compile to PDF and
-    return the PDF bytes. Requires a system LaTeX engine (pdflatex/xelatex/tectonic).
-    """
+    """Convert Markdown study notes to PDF via LaTeX compilation.
 
-    # Safe filename for temporary files
+    Requires tectonic, pdflatex, or xelatex to be installed on the system.
+    """
     safe_stem = re.sub(r"[^A-Za-z0-9_-]", "_", os.path.splitext(doc_filename)[0]) or "Lernzettel"
     tmpdir = tempfile.mkdtemp(prefix=f"sb_latex_{safe_stem}_")
     tex_path = os.path.join(tmpdir, f"{safe_stem}.tex")
     pdf_path = os.path.join(tmpdir, f"{safe_stem}.pdf")
 
-    # Minimal LaTeX document skeleton with basic styling and packages
-    latex_template = r"""
-% Auto-generated by StudyBuddy
+    latex_template = r"""% Auto-generated by StudyBuddy
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -349,149 +168,234 @@ def markdown_to_latex_and_pdf(md_text: str, doc_filename: str) -> bytes:
 \usepackage{amsmath,amssymb}
 \usepackage{geometry}
 \usepackage{parskip}
-\usepackage{xcolor}
+\usepackage[dvipsnames,table]{xcolor}
 \usepackage{enumitem}
-\usepackage{hyperref}
-\geometry{margin=20mm}
+\usepackage{titlesec}
+\usepackage[skins,breakable]{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\geometry{margin=22mm, top=28mm, bottom=28mm}
 
+% StudyBuddy Indigo palette
 \definecolor{Primary}{RGB}{79,70,229}
+\definecolor{PrimaryDark}{RGB}{55,48,163}
+\definecolor{TextSec}{RGB}{100,116,139}
+\definecolor{QuoteBorder}{RGB}{59,130,246}
 \definecolor{QuoteBG}{RGB}{239,246,255}
-\definecolor{ImportantBG}{RGB}{254,252,232}
+\definecolor{WichtigBorder}{RGB}{217,119,6}
+\definecolor{WichtigBG}{RGB}{254,252,232}
+
+% Styled section headings
+\titleformat{\section}
+  {\large\bfseries\color{Primary}}{}{0em}{}
+  [\vspace{2pt}\textcolor{Primary}{\rule{\linewidth}{0.6pt}}\vspace{2pt}]
+\titleformat{\subsection}{\normalsize\bfseries\color{PrimaryDark}}{}{0em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{PrimaryDark}}{}{0em}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titlespacing*{\subsection}{0pt}{10pt}{2pt}
+\titlespacing*{\subsubsection}{0pt}{8pt}{2pt}
+
+% tcolorbox styles
+\tcbset{
+  notebox/.style={
+    enhanced, breakable,
+    colback=QuoteBG, colframe=QuoteBorder,
+    left=6pt, right=6pt, top=5pt, bottom=5pt,
+    boxrule=0pt, leftrule=3pt, arc=2pt,
+    fontupper=\small,
+  },
+  wichtigbox/.style={
+    enhanced, breakable,
+    colback=WichtigBG, colframe=WichtigBorder,
+    left=6pt, right=6pt, top=5pt, bottom=5pt,
+    boxrule=0pt, leftrule=3pt, arc=2pt,
+    fontupper=\small,
+  }
+}
+
+% Header / Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{TextSec}{Lernzettel}}
+\fancyhead[R]{\small\textcolor{TextSec}{__DOCFILE__}}
+\fancyfoot[C]{\small\textcolor{TextSec}{\thepage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0pt}
 
 \begin{document}
-\pagestyle{plain}
 
-\begin{center}
-  {\LARGE\bfseries Lernzettel}\\[6pt]
-  {\small __DOCFILE__}\\[12pt]
-\end{center}
+% ── Title block ──────────────────────────────────────────────────────────
+\begin{tcolorbox}[
+  enhanced, sharp corners,
+  colback=Primary, colframe=Primary,
+  boxrule=0pt, left=14pt, right=14pt, top=14pt, bottom=14pt,
+]
+  \centering
+  {\LARGE\bfseries\color{white} Lernzettel}\\[6pt]
+  {\normalsize\color{white} __DOCFILE__}\\[4pt]
+  {\small\color{white} Erstellt mit StudyBuddy \textbar\ __DATE__}
+\end{tcolorbox}
+
+\vspace{8pt}
 
 __BODY__
 
-\vfill
-{\footnotesize Erstellt mit CoolSchoolTool  |  __DATE__  }
 \end{document}
 """
 
-    # Convert our Markdown-ish input into LaTeX snippet lines.
-    # We rely on the prompt ensuring headings, lists, blockquotes and LaTeX math
-    # are present already. We'll do a minimal conversion for those constructs.
-    def md_to_tex(md: str) -> str:
-        out_lines: list[str] = []
-        for line in md.splitlines():
-            s = line.strip()
-            if not s:
-                out_lines.append("")
-                continue
-            # Headings
-            if s.startswith("### "):
-                out_lines.append("\\subsubsection*{%s}" % _escape_latex(s[4:]))
-                continue
-            if s.startswith("## "):
-                out_lines.append("\\section*{%s}" % _escape_latex(s[3:]))
-                continue
-            if s.startswith("# "):
-                out_lines.append("\\section*{%s}" % _escape_latex(s[2:]))
-                continue
-            # Blockquote -> colored box (important or note)
-            if s.startswith("> "):
-                content = _escape_latex(s[2:])
-                # determine important by keyword
-                if any(k in content.upper() for k in ("WICHTIG","MERKE","ACHTUNG","VORSICHT")):
-                    out_lines.append("\\noindent\\colorbox{ImportantBG}{\\parbox{0.96\\linewidth}{%s}}" % content)
-                else:
-                    out_lines.append("\\noindent\\colorbox{QuoteBG}{\\parbox{0.96\\linewidth}{%s}}" % content)
-                continue
-            # unordered list
-            if s.startswith("- ") or s.startswith("* "):
-                # gather list block
-                items = [s[2:]]
-                continue_idx = 1
-                out_idx = 0
-                # we will not implement multi-line list aggregation here to keep logic simple
-                out_lines.append("\\begin{itemize}[leftmargin=*]")
-                out_lines.append("  \\item %s" % _escape_latex(s[2:]))
-                out_lines.append("\\end{itemize}")
-                continue
-            # numbered list
-            m = re.match(r"^(\\d+)\\.\\s+(.*)", s)
-            if m:
-                out_lines.append("\\begin{enumerate}[leftmargin=*]")
-                out_lines.append("  \\item %s" % _escape_latex(m.group(2)))
-                out_lines.append("\\end{enumerate}")
-                continue
-            # inline math is already in $...$ or $$...$$ — leave as-is but escape underscores
-            out_lines.append(_escape_latex_preserve_math(s))
-
-        return "\n\n".join(out_lines)
-
     def _escape_latex(s: str) -> str:
-        s = s.replace("\\","\\\\")
-        s = s.replace("%","\\%")
-        s = s.replace("_","\\_")
-        s = s.replace("{","\\{")
-        s = s.replace("}","\\}")
-        s = s.replace("#","\\#")
-        s = s.replace("&","\\&")
-        s = s.replace("^","\\^{}")
-        s = s.replace("~","\\~{}")
-        return s
+        s = s.replace("\\", "\x00BS\x00")
+        for char, repl in [
+            ("%", "\\%"), ("$", "\\$"), ("_", "\\_"), ("{", "\\{"), ("}", "\\}"),
+            ("#", "\\#"), ("&", "\\&"), ("^", "\\^{}"), ("~", "\\~{}"),
+        ]:
+            s = s.replace(char, repl)
+        return s.replace("\x00BS\x00", "\\textbackslash{}")
 
-    def _escape_latex_preserve_math(s: str) -> str:
-        # Split on math segments and escape non-math parts
-        parts = re.split(r"(\$\$.*?\$\$|\$.*?\$)", s)
+    def _process_text(s: str) -> str:
+        """Escape LaTeX special chars and convert **bold** to \\textbf{}."""
+        parts = re.split(r"(\*\*.*?\*\*)", s)
+        out = []
+        for part in parts:
+            if part.startswith("**") and part.endswith("**") and len(part) > 4:
+                out.append("\\textbf{" + _escape_latex(part[2:-2]) + "}")
+            else:
+                out.append(_escape_latex(part))
+        return "".join(out)
+
+    def _escape_math_preserve(s: str) -> str:
+        """Process text while leaving $...$ and $$...$$ math untouched."""
+        parts = re.split(r"(\$\$.*?\$\$|\$[^$]+?\$)", s, flags=re.DOTALL)
         out = []
         for p in parts:
             if not p:
                 continue
-            if p.startswith("$$") or (p.startswith("$") and p.endswith("$")):
+            if (p.startswith("$$") and p.endswith("$$")) or (p.startswith("$") and p.endswith("$")):
                 out.append(p)
             else:
-                out.append(_escape_latex(p))
+                out.append(_process_text(p))
         return "".join(out)
 
-    # Generate LaTeX body
-    body = md_to_tex(md_text)
+    def md_to_tex(md: str) -> str:
+        out_lines: list[str] = []
+        lines = md.splitlines()
+        i = 0
+        while i < len(lines):
+            s = lines[i].strip()
+            if not s:
+                out_lines.append("")
+                i += 1
+                continue
+            if s.startswith("### "):
+                out_lines.append("\\subsubsection*{%s}" % _escape_math_preserve(s[4:]))
+            elif s.startswith("## "):
+                out_lines.append("\\section*{%s}" % _escape_math_preserve(s[3:]))
+            elif s.startswith("# "):
+                out_lines.append("\\section*{%s}" % _escape_math_preserve(s[2:]))
+            elif s.startswith("> "):
+                content = _escape_math_preserve(s[2:])
+                if any(k in s.upper() for k in ("WICHTIG", "MERKE", "ACHTUNG", "VORSICHT")):
+                    out_lines.append(
+                        "\\begin{tcolorbox}[wichtigbox]\n%s\n\\end{tcolorbox}" % content
+                    )
+                else:
+                    out_lines.append(
+                        "\\begin{tcolorbox}[notebox]\n%s\n\\end{tcolorbox}" % content
+                    )
+            elif s.startswith("- ") or s.startswith("* "):
+                out_lines.append("\\begin{itemize}[leftmargin=*]")
+                while i < len(lines) and (
+                    lines[i].strip().startswith("- ") or lines[i].strip().startswith("* ")
+                ):
+                    item = lines[i].strip()[2:]
+                    out_lines.append("  \\item %s" % _escape_math_preserve(item))
+                    i += 1
+                out_lines.append("\\end{itemize}")
+                continue
+            else:
+                m = re.match(r"^(\d+)\.\s+(.*)", s)
+                if m:
+                    out_lines.append("\\begin{enumerate}[leftmargin=*]")
+                    while i < len(lines):
+                        nm = re.match(r"^(\d+)\.\s+(.*)", lines[i].strip())
+                        if not nm:
+                            break
+                        out_lines.append("  \\item %s" % _escape_math_preserve(nm.group(2)))
+                        i += 1
+                    out_lines.append("\\end{enumerate}")
+                    continue
+                else:
+                    out_lines.append(_escape_math_preserve(s))
+            i += 1
+        return "\n\n".join(out_lines)
 
-    # Write .tex file
-    doc_escaped = doc_filename.replace('_', '\\_')
-    filled = latex_template.replace('__DOCFILE__', doc_escaped).replace('__BODY__', body).replace('__DATE__', datetime.now().strftime("%d.%m.%Y"))
+    body = md_to_tex(md_text)
+    doc_escaped = _escape_latex(doc_filename)
+    filled = (
+        latex_template
+        .replace("__DOCFILE__", doc_escaped)
+        .replace("__BODY__", body)
+        .replace("__DATE__", datetime.now().strftime("%d.%m.%Y"))
+    )
+    debug_tex = os.path.join(UPLOAD_DIR, "debug_last.tex")
     with open(tex_path, "w", encoding="utf-8") as f:
         f.write(filled)
+    with open(debug_tex, "w", encoding="utf-8") as f:
+        f.write(filled)
 
-    # Try to compile using tectonic/tectonic CLI or pdflatex/xelatex
-    compile_ok = False
     try:
-        # try tectonic CLI first
-        import shutil, subprocess
         if shutil.which("tectonic"):
-            subprocess.run(["tectonic", tex_path], check=True, cwd=tmpdir, timeout=30)
-            compile_ok = True
-            pdf_path = os.path.join(tmpdir, f"{safe_stem}.pdf")
+            subprocess.run(["tectonic", tex_path], check=True, cwd=tmpdir, timeout=300)
         elif shutil.which("pdflatex"):
-            subprocess.run(["pdflatex", "-interaction=nonstopmode", os.path.basename(tex_path)], check=True, cwd=tmpdir, timeout=30)
-            compile_ok = True
+            subprocess.run(
+                [
+                    "pdflatex",
+                    "-interaction=nonstopmode",
+                    "-halt-on-error",
+                    "--enable-installer",  # MiKTeX: fehlende Pakete automatisch installieren
+                    os.path.basename(tex_path),
+                ],
+                check=True, cwd=tmpdir, timeout=300,
+            )
         elif shutil.which("xelatex"):
-            subprocess.run(["xelatex", "-interaction=nonstopmode", os.path.basename(tex_path)], check=True, cwd=tmpdir, timeout=30)
-            compile_ok = True
+            subprocess.run(
+                [
+                    "xelatex",
+                    "-interaction=nonstopmode",
+                    "-halt-on-error",
+                    os.path.basename(tex_path),
+                ],
+                check=True, cwd=tmpdir, timeout=300,
+            )
         else:
-            raise RuntimeError("Kein LaTeX-Compiler gefunden (tectonic/pdflatex/xelatex). Bitte installieren.")
-    except Exception as e:
-        # Clean up and re-raise with helpful message
+            raise RuntimeError(
+                "Kein LaTeX-Compiler gefunden (tectonic / pdflatex / xelatex). "
+                "Bitte einen installieren – siehe README."
+            )
+    except subprocess.CalledProcessError:
+        # Read LaTeX log for a useful error message before cleaning up
+        log_path = os.path.join(tmpdir, f"{safe_stem}.log")
+        log_hint = ""
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8", errors="replace") as lf:
+                error_lines = [l.rstrip() for l in lf if l.startswith("!") or "Fatal error" in l]
+            if error_lines:
+                log_hint = " | LaTeX: " + " / ".join(error_lines[:3])
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise RuntimeError(f"LaTeX-Kompilierung fehlgeschlagen{log_hint}")
+    except Exception:
         shutil.rmtree(tmpdir, ignore_errors=True)
         raise
 
-    # Read PDF bytes
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
 
-    # cleanup
     shutil.rmtree(tmpdir, ignore_errors=True)
     return pdf_bytes
 
 
 # ---------------------------------------------------------------------------
-#  Study Notes Generation – Improved Prompt
+#  Study Notes Generation
 # ---------------------------------------------------------------------------
 
 STUDY_NOTES_SYSTEM_PROMPT = (
@@ -507,15 +411,16 @@ STUDY_NOTES_SYSTEM_PROMPT = (
     "'> WICHTIG: ...' – das wird als Infobox dargestellt.\n"
     "5. Nummerierte Listen (1. 2. 3.) fuer Schritt-fuer-Schritt-Erklaerungen oder Ablaeufe.\n"
     "6. Verwende KEINE Tabellen und KEINE Code-Bloecke (```).\n"
-    "7. Schreibe mathematische Ausdruecke immer in echter LaTeX-Notation und kapsle sie in $...$ "
-    "oder $$...$$. Nutze moeglichst \\frac, \\partial, \\mathbb, \\sum, \\int, \\pi und Exponenten.\n"
-    "8. Beende den Lernzettel mit einem Abschnitt '## Zusammenfassung' der die 5-7 "
-    "wichtigsten Punkte als Aufzaehlung enthaelt.\n\n"
+    "7. Schreibe mathematische Ausdruecke immer in LaTeX-Notation: $...$ fuer Inline-Formeln, "
+    "$$...$$ fuer abgesetzte Formeln. Nutze \\frac, \\partial, \\mathbb, \\sum, \\int, \\pi.\n"
+    "8. Beende den Lernzettel mit einem Abschnitt '## Zusammenfassung' mit den 5-7 "
+    "wichtigsten Punkten als Aufzaehlung.\n\n"
     "INHALTLICHE REGELN:\n"
     "- Fasse die wichtigsten Konzepte praegnant zusammen.\n"
     "- Erklaere Fachbegriffe verstaendlich (aber kompakt).\n"
     "- Behalte alle Formeln, Zahlen und konkreten Beispiele bei.\n"
-    "- Gliedere den Stoff logisch und thematisch. Ignoriere vorlesungsfremde Inhalte wie Semesterplan, organisatorische Hinweise oder allgemeine Begruessungen, ausser sie sind direkt fuer das Lernziel relevant.\n"
+    "- Gliedere den Stoff logisch und thematisch.\n"
+    "- Ignoriere organisatorische Hinweise, Semesterplan und Begruessungen.\n"
     "- Schreibe auf Deutsch.\n"
     "- Der Lernzettel soll wie ein professionelles Handout wirken."
 )
@@ -526,9 +431,11 @@ async def generate_notes(doc_id: str):
     if not azure_openai_configured():
         raise HTTPException(
             status_code=503,
-            detail="Azure OpenAI ist nicht konfiguriert. "
-            "Bitte AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, "
-            "AZURE_OPENAI_API_VERSION und AZURE_OPENAI_DEPLOYMENT setzen.",
+            detail=(
+                "Azure OpenAI ist nicht konfiguriert. "
+                "Bitte AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, "
+                "AZURE_OPENAI_API_VERSION und AZURE_OPENAI_DEPLOYMENT in der .env setzen."
+            ),
         )
     if doc_id not in documents_store:
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
@@ -546,17 +453,15 @@ async def generate_notes(doc_id: str):
             f"{AZURE_OPENAI_DEPLOYMENT}/chat/completions"
             f"?api-version={AZURE_OPENAI_API_VERSION}"
         )
-
         payload = {
             "messages": [
                 {"role": "system", "content": STUDY_NOTES_SYSTEM_PROMPT},
                 {
                     "role": "user",
                     "content": (
-                        "Erstelle einen didaktisch aufbereiteten Lernzettel nur aus dem fachlich "
-                        "relevanten Inhalt dieser Vorlesung. Entferne rein organisatorische, "
-                        "administrative oder vorlesungsfremde Informationen. Formeln muessen in "
-                        "LaTeX mit $...$ oder $$...$$ geschrieben werden.\n\n"
+                        "Erstelle einen didaktisch aufbereiteten Lernzettel aus dem fachlich "
+                        "relevanten Inhalt dieser Vorlesung. Formeln muessen in LaTeX mit "
+                        "$...$ oder $$...$$ geschrieben werden.\n\n"
                         "Vorlesungsinhalt:\n\n" + content
                     ),
                 },
@@ -564,7 +469,7 @@ async def generate_notes(doc_id: str):
             "temperature": 0.5,
             "max_tokens": 2500,
         }
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url,
@@ -574,11 +479,9 @@ async def generate_notes(doc_id: str):
             )
             response.raise_for_status()
 
-        data = response.json()
-        notes_markdown = data["choices"][0]["message"]["content"]
-
-        # Prefer LaTeX-based PDF generation for higher fidelity (math, boxes)
+        notes_markdown = response.json()["choices"][0]["message"]["content"]
         pdf_bytes = markdown_to_latex_and_pdf(notes_markdown, source_filename)
+
         pdf_path = os.path.join(UPLOAD_DIR, f"{doc_id}_{notes_filename}")
         with open(pdf_path, "wb") as f:
             f.write(pdf_bytes)
@@ -594,14 +497,8 @@ async def generate_notes(doc_id: str):
 async def download_notes_pdf(doc_id: str):
     if doc_id not in documents_store or "notes_pdf_path" not in documents_store[doc_id]:
         raise HTTPException(status_code=404, detail="Lernzettel-PDF nicht gefunden")
-
     pdf_path = documents_store[doc_id]["notes_pdf_path"]
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF-Datei nicht gefunden")
-
     safe_name = _build_notes_filename(documents_store[doc_id]["filename"])
-    return FileResponse(
-        pdf_path,
-        media_type="application/pdf",
-        filename=safe_name,
-    )
+    return FileResponse(pdf_path, media_type="application/pdf", filename=safe_name)

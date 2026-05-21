@@ -5,6 +5,3 @@ python-multipart
 pypdf
 httpx
 python-dotenv
-fpdf2
-markdown
-matplotlib
